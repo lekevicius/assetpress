@@ -1,0 +1,25 @@
+{
+  "name": "AssetPress",
+  "version": "1.0.0",
+  "authors": [
+    "Jonas Lekevicius <jonas@lekevicius.com>"
+  ],
+  "description": "Awesome Sauce",
+  "main": "assetpress.js",
+  "moduleType": [
+    "node"
+  ],
+  "keywords": [
+    "android",
+    "ios"
+  ],
+  "license": "MIT",
+  "homepage": "http://lekevicius.com/projects/assetpress",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
