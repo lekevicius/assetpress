@@ -1,5 +1,5 @@
 `#!/usr/bin/env node
-`
+` # TODO better coffeescript hashbang?
 
 fs = require 'fs-extra'
 path = require 'path'
@@ -51,7 +51,7 @@ doc = """
       """
 return process.stdout.write(doc) if argv.help or argv.h
 
-return process.stdout.write('AssetPress version ' + info.version + '\n') if argv.version
+return process.stdout.write "AssetPress version #{ info.version }\n" if argv.version
 
 require('./assetpress')
   cwd: argv.cwd
@@ -59,7 +59,7 @@ require('./assetpress')
   outputDirectoryName: argv.output or argv.o
   verbose: argv.verbose or argv.v
   clean: argv.clean or argv.c
-  os: if argv.ios or argv.i then 'ios' else if argv.android or argv.a then 'android' else undefined
+  os: if (argv.ios or argv.i) then 'ios' else if (argv.android or argv.a) then 'android' else undefined
   iosMinimumUniversal: argv.min
   iosMaximumUniversal: argv.max
   iosMinimumPhone: argv['min-phone']
