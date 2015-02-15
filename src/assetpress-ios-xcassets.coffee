@@ -97,7 +97,7 @@ appIconGroups =
       size: 144
 
 appIconList = []
-appIconList.push for iconName of groupContents for groupName, groupContents of appIconGroups
+appIconList.push iconName for iconName of groupContents for groupName, groupContents of appIconGroups
 module.exports.appIconList = appIconList
 
 launchImageGroups = 
@@ -184,7 +184,7 @@ launchImageGroups =
       height: 1536
 
 launchImageList = []
-launchImageList.push for launchImageName of groupContents for groupName, groupContents of launchImageGroups
+launchImageList.push launchImageName for launchImageName of groupContents for groupName, groupContents of launchImageGroups
 module.exports.launchImageList = launchImageList
 
 contentsJSONForImage = (filenames, basename) ->
@@ -251,7 +251,7 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
           fs.unlinkSync outputDirectory + directoryName + '/' + appIconConflict
 
   for appIconName in filteredAppIconList
-    return if conflictSkipList.indexOf(appIconName) > -1
+    continue if conflictSkipList.indexOf(appIconName) > -1
     appIconInfo = getAppIconInfo appIconName
     idiom = appIconName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
@@ -309,13 +309,12 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
 getAppIconInfo = (needle) ->
   for groupName of appIconGroups
     filenames = _.keys appIconGroups[groupName]
-    return appIconGroups[groupName][ needle] if _.contains filenames, needle
+    return appIconGroups[groupName][needle] if _.contains filenames, needle
   false
 
 getLaunchImageInfo = (needle) ->
   for groupName of launchImageGroups
-    filenames = _.keys(launchImageGroups[groupName])
-    
+    filenames = _.keys launchImageGroups[groupName]
     return launchImageGroups[groupName][needle] if _.contains filenames, needle
   false
 

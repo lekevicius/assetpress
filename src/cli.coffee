@@ -1,5 +1,5 @@
 `#!/usr/bin/env node
-` # TODO better coffeescript hashbang?
+`
 
 fs = require 'fs-extra'
 path = require 'path'
