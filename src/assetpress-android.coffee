@@ -50,13 +50,13 @@ processImage = (task, cb) ->
       processStandardImage file, cb
 
 createPatch = (side, file, cb) ->
-  if side == 'top' or side == 'bottom'
+  if side is 'top' or side is 'bottom'
     cropWidth = file.width - file.patchScaleFactor * 2
     cropHeight = 1
     resizeWidth = Math.round cropWidth * file.scaleFactor
     resizeHeight = 1
 
-  if side == 'left' or side == 'right'
+  if side is 'left' or side is 'right'
     cropWidth = 1
     cropHeight = file.height - file.patchScaleFactor * 2
     resizeWidth = 1
@@ -103,21 +103,20 @@ process9PatchImage = (file, cb) ->
   file.pixelShift = file.patchScaleFactor - 1
   if (file.width - file.patchScaleFactor * 2) % 4 != 0 or (file.height - file.patchScaleFactor * 2) % 4 != 0
     return process.stdout.write('Image ' + file.basename + ' dimensions are not multiples of 4. Skipping.\n')
+
   createPatchContent file, ->
-    createPatch 'left', file, ->
-      createPatch 'right', file, ->
-        createPatch 'top', file, ->
-          createPatch 'bottom', file, ->
-            _composite = im(file.patchContentWidth + 2, file.patchContentHeight + 2, '#ffffff00').out('-define', 'png:exclude-chunk=date')
-            _composite.draw [ 'image Over 1,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-content.png\'' ]
-            _composite.draw [ 'image Over 1,0 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-topPatch.png\'' ]
-            _composite.draw [ 'image Over 0,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-leftPatch.png\'' ]
-            _composite.draw [ 'image Over ' + (file.patchContentWidth + 1) + ',1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-rightPatch.png\'' ]
-            _composite.draw [ 'image Over 1,' + (file.patchContentHeight + 1) + ' 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-bottomPatch.png\'' ]
-            _composite.write to, (err) ->
-              console.log err if err
-              process.stdout.write 'Saved ' + file.basename + ' in ' + file.density + ' density\n' if verbose
-              cb()
+    createPatch 'left', file, -> createPatch 'right', file, ->
+      createPatch 'top', file, -> createPatch 'bottom', file, ->
+        _composite = im(file.patchContentWidth + 2, file.patchContentHeight + 2, '#ffffff00').out('-define', 'png:exclude-chunk=date')
+        _composite.draw [ 'image Over 1,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-content.png\'' ]
+        _composite.draw [ 'image Over 1,0 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-topPatch.png\'' ]
+        _composite.draw [ 'image Over 0,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-leftPatch.png\'' ]
+        _composite.draw [ 'image Over ' + (file.patchContentWidth + 1) + ',1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-rightPatch.png\'' ]
+        _composite.draw [ 'image Over 1,' + (file.patchContentHeight + 1) + ' 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-bottomPatch.png\'' ]
+        _composite.write to, (err) ->
+          console.log err if err
+          process.stdout.write 'Saved ' + file.basename + ' in ' + file.density + ' density\n' if verbose
+          cb()
 
 processStandardImage = (file, cb) ->
   if file.width % 4 != 0 or file.height % 4 != 0
@@ -140,33 +139,33 @@ processNoDpiImage = (file, cb) ->
     cb()
 
 module.exports = (directory, options, globalOptions) ->
-  produceDensities = _.keys(densities)
+  produceDensities = _.keys densities
   produceDensities = _.without(produceDensities, 'ldpi') if !options.ldpi
   produceDensities = _.without(produceDensities, 'xxxhdpi') if !options.xxxhdpi
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = temporaryDirectoryObject.path
-  temporaryDirectory += '/' if temporaryDirectory.slice(-1) != '/'
+  temporaryDirectory += '/' if temporaryDirectory.slice(-1) isnt '/'
   outputDirectoryName = globalOptions.outputDirectoryName or 'res'
   outputDirectory = path.join globalOptions.cwd, outputDirectoryName
-  outputDirectory += '/' if outputDirectory.slice(-1) != '/'
+  outputDirectory += '/' if outputDirectory.slice(-1) isnt '/'
   verbose = globalOptions.verbose
   fs.removeSync outputDirectory if globalOptions.clean and fs.existsSync(outputDirectory)
   fs.ensureDirSync outputDirectory
-  _(produceDensities).each (density) -> fs.ensureDirSync outputDirectory + 'drawable-' + density
+  fs.ensureDirSync outputDirectory + 'drawable-' + density for density in produceDensities
 
-  queue = async.queue(processImage, 2)
+  queue = async.queue processImage, 2
   queue.drain = -> fs.removeSync temporaryDirectory
 
-  _(fs.readdirSync(directory)).each (file) ->
-    return if file.slice(0, 1) == '.'
-    return if file.slice(0, 1) == '_'
+  for file in fs.readdirSync directory
+    return if file.slice(0, 1) is '.'
+    return if file.slice(0, 1) is '_'
 
     path_string = path.join directory, file
     extension = path.extname path_string
 
     if fs.lstatSync(path_string).isFile()
-      if _.contains(allowedExtensions, extension)
-        _(produceDensities).each (density) ->
+      if _.contains allowedExtensions, extension
+        for density in produceDensities
           queue.push
             path: path_string
             density: density

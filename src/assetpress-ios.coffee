@@ -53,19 +53,20 @@ processImage = (task, cb) ->
   name = '' + scale
   highestScale = info.devices[device].highestScale
   return cb() if scale > highestScale
-  fs.ensureDirSync '' + outputDirectory + info.foldername
+  fs.ensureDirSync outputDirectory + info.foldername
   highestScaleImagePath = inputDirectory + info.devices[device]['' + highestScale]
   image = im(highestScaleImagePath).out '-define', 'png:exclude-chunk=date'
+
   image.size (err, size) ->
     # unchangedOutputPath = ''
     imageWidth = size.width
     imageHeight = size.height
-    scaleSuffix = if scale == 1 then '' else '@' + scale + 'x'
-    deviceSuffix = if device == 'universal' then '' else '~' + device
+    scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+    deviceSuffix = if device is 'universal' then '' else '~' + device
     from = inputDirectory + info.devices[device][name]
     outputPath = info.id + scaleSuffix + deviceSuffix + info.extension
 
-    if info.id.indexOf('AppIcon') == 0
+    if info.id.indexOf('AppIcon') is 0
       unchangedOutputPath = outputPath
       if !_.contains iOSAssetPressXCAssets.appIconList, outputPath
         iPhoneOutputPath = info.id + scaleSuffix + '~iphone' + info.extension
@@ -84,7 +85,7 @@ processImage = (task, cb) ->
       #     ", but it is " + imageWidth + "x" + imageHeight + ".\n");
       # }
 
-    if info.id.indexOf('Default') == 0
+    if info.id.indexOf('Default') is 0
       unchangedOutputPath = outputPath
       if !_.contains( iOSAssetPressXCAssets.launchImageList, outputPath)
         iPhoneOutputPath = '' + info.id + scaleSuffix + '~iphone' + info.extension
@@ -107,10 +108,10 @@ processImage = (task, cb) ->
       # }
 
     if xcassets
-      if info.id.indexOf('AppIcon') == 0
+      if info.id.indexOf('AppIcon') is 0
         outputPath = 'AppIcon.appiconset/' + info.id + scaleSuffix + deviceSuffix + info.extension
         fs.ensureDirSync outputDirectory + 'AppIcon.appiconset/'
-      else if info.id.indexOf('Default') == 0
+      else if info.id.indexOf('Default') is 0
         outputPath = 'LaunchImage.launchimage/' + info.id + scaleSuffix + deviceSuffix + info.extension
         fs.ensureDirSync outputDirectory + 'LaunchImage.launchimage/'
       else
@@ -146,19 +147,14 @@ describeInputDirectory = (input) ->
       return false
     pathSegments = filepath.split '/'
     pathSegments.pop()
-    i = 0
-    len = pathSegments.length
-    while i < len
-      segment = pathSegments[i]
-      return false if segment.slice(0, 1) == '_'
-      i++
+    return false for segment in pathSegments when segment.slice(0, 1) is '_'
     true
 
   grouped = _.groupBy filtered, (filepath) ->
-    extension = path.extname filepath
-    namepath = filepath.slice 0, extension.length * -1
-    normalized = namepath.replace(/@(\d+)x/, '').replace(/~([a-z]+)/, '')
-    normalized
+    filepath
+    .slice 0, path.extname(filepath).length * -1
+    .replace(/@(\d+)x/, '')
+    .replace(/~([a-z]+)/, '')
 
   imageDescriptors = []
   for identifier of grouped
@@ -176,23 +172,26 @@ describeInputDirectory = (input) ->
     descriptor.extension = path.extname paths[0]
     descriptor.extension = '.jpg' if descriptor.extension == '.jpeg'
       
-    _(paths).each (filepath) ->
+    for filepath in paths
       extension = path.extname filepath
       namepath = filepath.slice 0, extension.length * -1
       scaleMatch = namepath.match /@(\d+)x/
       scale = if scaleMatch then parseInt scaleMatch[1] else 1
       deviceMatch = namepath.match /~([a-z]+)/i
       device = if deviceMatch then deviceMatch[1].toLowerCase() else 'universal'
-      if !_.has descriptor.devices, device
-        descriptor.devices[device] = {}
+      descriptor.devices[device] = {} if !_.has descriptor.devices, device
       descriptor.devices[device][scale] = filepath
 
-    for device of descriptor.devices
-      paths = descriptor.devices[device]
+    for device, paths of descriptor.devices
       maxScale = _.max _.keys(paths), (key) -> parseInt key
       descriptor.devices[device].highestScale = parseInt maxScale
-    if (_.has(descriptor.devices, 'iphone') or _.has(descriptor.devices, 'ipad')) and _.has(descriptor.devices, 'universal') and xcassets and !(identifier.indexOf('AppIcon') == 0 or identifier.indexOf('Default') == 0)
-      delete descriptor.devices.universal
+
+    delete descriptor.devices.universal if (
+      ( _.has(descriptor.devices, 'iphone') or _.has(descriptor.devices, 'ipad') ) and 
+      _.has(descriptor.devices, 'universal') and
+      xcassets and 
+      !( identifier.indexOf('AppIcon') == 0 or identifier.indexOf('Default') == 0 )
+    )
     imageDescriptors.push descriptor
   imageDescriptors
 
@@ -220,7 +219,7 @@ module.exports = (directory, options, globalSettings) ->
 
   imageDescriptors = describeInputDirectory inputDirectory
 
-  _(deviceTypes).each (device) ->
+  for device in deviceTypes
     switch device
       when 'iphone'
         minDensity = minimumPhone
@@ -248,7 +247,7 @@ module.exports = (directory, options, globalSettings) ->
         absoluteMinDensity = 1
         absoluteMaxDensity = 3
 
-    _(imageDescriptors).each (descriptor) ->
+    for descriptor in imageDescriptors
       if _.has descriptor.devices, device
         adjustedMinDensity = minDensity
         adjustedMaxDensity = maxDensity
@@ -265,11 +264,15 @@ module.exports = (directory, options, globalSettings) ->
           scale++
         # Don't skip any pre-rendered images
         for scale of descriptor.devices[device]
-          if scale == 'highestScale'
+          if scale is 'highestScale'
             scale++
             continue
           scale = parseInt scale
-          if (scale < adjustedMinDensity or scale > adjustedMaxDensity) and scale >= absoluteMinDensity and scale <= absoluteMaxDensity
+          if (
+            (scale < adjustedMinDensity or scale > adjustedMaxDensity) and
+            scale >= absoluteMinDensity and
+            scale <= absoluteMaxDensity
+          )
             queue.push
               info: descriptor
               device: device

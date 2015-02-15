@@ -97,10 +97,7 @@ appIconGroups =
       size: 144
 
 appIconList = []
-_(appIconGroups).each (groupContents) ->
-  _(groupContents).each (values, key) -> appIconList.push key
-# TODO Better coffeescript
-
+appIconList.push for iconName of groupContents for groupName, groupContents of appIconGroups
 module.exports.appIconList = appIconList
 
 launchImageGroups = 
@@ -187,12 +184,8 @@ launchImageGroups =
       height: 1536
 
 launchImageList = []
-_(launchImageGroups).each (groupContents) ->
-  _(groupContents).each (values, key) -> launchImageList.push key
-# TODO Better coffeescript
-
+launchImageList.push for launchImageName of groupContents for groupName, groupContents of launchImageGroups
 module.exports.launchImageList = launchImageList
-
 
 contentsJSONForImage = (filenames, basename) ->
   contents = 
@@ -205,31 +198,31 @@ contentsJSONForImage = (filenames, basename) ->
   extension = path.extname firstFilename
   isDeviceSpecific = !! firstFilename.match /~([a-z]+)/
   
-  contents.info['template-rendering-intent'] = 'original' if extension == '.jpg'
+  contents.info['template-rendering-intent'] = 'original' if extension is '.jpg'
   possibleNames = []
 
   if isDeviceSpecific
     scale = 1
     while scale <= 3
-      scaleSuffix = if scale == 1 then '' else '@' + scale + 'x'
-      possibleNames.push '' + basename + scaleSuffix + '~iphone' + extension
+      scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+      possibleNames.push basename + scaleSuffix + '~iphone' + extension
       scale++
     scale = 1
     while scale <= 2
-      scaleSuffix = if scale == 1 then '' else '@' + scale + 'x'
-      possibleNames.push '' + basename + scaleSuffix + '~ipad' + extension
+      scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+      possibleNames.push basename + scaleSuffix + '~ipad' + extension
       scale++
   else
     scale = 1
     while scale <= 3
-      scaleSuffix = if scale == 1 then '' else '@' + scale + 'x'
-      possibleNames.push '' + basename + scaleSuffix + extension
+      scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+      possibleNames.push basename + scaleSuffix + extension
       scale++
 
-  _(possibleNames).each (possibleName) ->
-    idiom = possibleName.match(/~([a-z]+)/)
+  for possibleName in possibleNames
+    idiom = possibleName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
-    scale = possibleName.match(/@(\d+)x/)
+    scale = possibleName.match /@(\d+)x/
     scale = if scale then scale[1] + 'x' else '1x'
     imageInfo = 
       idiom: idiom
@@ -247,17 +240,17 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
     properties: 'pre-rendered': true
   filteredAppIconList = resourceListWithRequiredGroups filenames, appIconGroups
   conflictSkipList = []
-  _(filteredAppIconList).each (appIconName) ->
-    appIconInfo = getAppIconInfo(appIconName)
+  for appIconName in filteredAppIconList
+    appIconInfo = getAppIconInfo appIconName
     if appIconInfo and appIconInfo.conflicts
       merged = _.union [ appIconName ], appIconInfo.conflicts
-      if _.intersection(filenames, merged).length == merged.length
+      if _.intersection(filenames, merged).length is merged.length
         filenames = _.difference filenames, appIconInfo.conflicts
-        _(appIconInfo.conflicts).each (appIconConflict) ->
+        for appIconConflict in appIconInfo.conflicts
           conflictSkipList.push appIconConflict
           fs.unlinkSync outputDirectory + directoryName + '/' + appIconConflict
 
-  _(filteredAppIconList).each (appIconName) ->
+  for appIconName in filteredAppIconList
     return if conflictSkipList.indexOf(appIconName) > -1
     appIconInfo = getAppIconInfo appIconName
     idiom = appIconName.match /~([a-z]+)/
@@ -269,14 +262,14 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
     if appIconInfo and appIconInfo.settingSize
       size = appIconInfo.settingSize + 'x' + appIconInfo.settingSize
     else
-      scaledSize = Math.round(appIconInfo.size / scale)
+      scaledSize = Math.round appIconInfo.size / scale
       size = scaledSize + 'x' + scaledSize
 
     imageInfo = 
       size: size
       idiom: idiom
       scale: scaleSetting
-    subtype = getImageSubtype(appIconName)
+    subtype = getImageSubtype appIconName
     
     imageInfo.subtype = subtype if subtype
     imageInfo.role = appIconInfo.role if appIconInfo and appIconInfo.role
@@ -291,8 +284,8 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
     info:
       version: 1
       author: 'xcode'
-  filteredLaunchImageList = resourceListWithRequiredGroups(filenames, launchImageGroups)
-  _(filteredLaunchImageList).each (launchImageName) ->
+  filteredLaunchImageList = resourceListWithRequiredGroups filenames, launchImageGroups
+  for launchImageName in filteredLaunchImageList
     idiom = launchImageName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
     scale = launchImageName.match /@(\d+)x/
@@ -303,7 +296,7 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
       idiom: idiom
       orientation: orientation
       scale: scale
-    launchImageInfo = getLaunchImageInfo(launchImageName)
+    launchImageInfo = getLaunchImageInfo launchImageName
     
     imageInfo['minimum-system-version'] = launchImageInfo.minimumSystemVersion if launchImageInfo and launchImageInfo.minimumSystemVersion
     subtype = getImageSubtype(launchImageName)
@@ -330,7 +323,7 @@ getImageSubtype = (filename) ->
   heightSubtype = filename.match /(\d+)h/
   if heightSubtype
     number = parseInt heightSubtype[1]
-    return 'retina4' if number == 568
+    return 'retina4' if number is 568
     return number + 'h'
   watchSubtype = filename.match(/(\d+)mm/)
   if watchSubtype
@@ -339,14 +332,10 @@ getImageSubtype = (filename) ->
   false
 
 resourceListWithRequiredGroups = (filenames, groupedList) ->
-  requiredGroups = []
-  for groupName of groupedList
-    requiredGroups.push groupName if _.intersection(filenames, _.keys(groupedList[groupName])).length
-
+  requiredGroups = ( groupName for groupName of groupedList when _.intersection(filenames, _.keys(groupedList[groupName])).length )
   filteredGroups = _.pick groupedList, requiredGroups
   result = []
-  _(filteredGroups).each (groupContents) ->
-    _(groupContents).each (values, key) -> result.push key
+  result.push key for key, value of groupContents for groupName, groupContents of filteredGroups
   result
 
 module.exports.createContentsJSON = (describedDirectory, globalOptions) ->
@@ -356,15 +345,15 @@ module.exports.createContentsJSON = (describedDirectory, globalOptions) ->
   paths = _.map paths, (filepath) -> filepath.replace outputDirectory, ''
   assetDirectories = _.filter paths, (filepath) -> /\.appiconset$/.test(filepath) or /\.launchimage$/.test(filepath) or /\.imageset$/.test(filepath)
 
-  _(assetDirectories).each (directory) ->
+  for directory in assetDirectories
     basename = directory.split('/').pop()
     extension = path.extname basename
     basename = basename.slice 0, extension.length * -1
     directoryContents = _.filter paths, (filepath) -> filepath.indexOf(directory + '/') == 0
     directoryContents = _.map directoryContents, (filepath) -> filepath.replace directory + '/', ''
     directoryContents = _.filter directoryContents, (filename) ->
-      return false if filename.slice(0, 1) == '.'
-      return false if filename == 'Contents.json'
+      return false if filename.slice(0, 1) is '.'
+      return false if filename is 'Contents.json'
       true
     contents = '{}'
     contents = contentsJSONForAppIcon directoryContents, directory if /\.appiconset$/.test directory
