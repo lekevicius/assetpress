@@ -8,7 +8,7 @@ AssetPress is a high quality asset resizer for iOS and Android. It fits in the g
 
 * **High quality resizing.** A lot of care went into finding the best resizing algorithm that preserves sharp edges and smooth curves.
 * **Resizing iOS assets** from higher resolutions to lower. Starting @4x resolution is recommended (more on that below).
-* **Xcassets folder generator**, including AppIcon, LaunchImage and nested groups. You can go from design source file (PSD or Sketch) to .xcassets folder in one step, and just replace existing Images.xcassets with a new one.
+* **Xcassets folder generator**, including AppIcon, LaunchImage and nested groups. You can go from design source file (PSD or Sketch) to .xcassets folder in one step, and just replace existing Images.xcassets with a new one. Even supports all Apple Watch icons and launch images!
 * **Smart resolution resizing.** No 1x files for iPhone, no 3x files for iPad - unless you choose otherwise.
 * **Resizing Android assets** to every resolution - mdpi, hdpi, xhdpi, xxhdpi. Handles no-dpi correctly, and can even resize to ldpi and xxxhdpi if you choose.
 * **The best Android 9-patch resizer.** Very flexible and produces 9-patch images in every resolution.

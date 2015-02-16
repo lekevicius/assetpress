@@ -30,7 +30,7 @@
     "email": "jonas@lekevicius.com",
     "url": "http://lekevicius.com"
   },
-  "main": "assetpress.js",
+  "main": "./lib/assetpress.js",
   "bin": "./lib/cli.js",
   "scripts": {
     "prepublish": "coffee --no-header --bare --output lib --compile src"
@@ -42,7 +42,6 @@
     "gm": "^1.17.0",
     "lodash": "^3.2.0",
     "minimist": "^1.1.0",
-    "rimraf": "^2.2.8",
     "temporary": "0.0.8",
     "walkdir": "0.0.7"
   }
