@@ -105,20 +105,18 @@ process9PatchImage = (file, cb) ->
     return process.stdout.write('Image ' + file.basename + ' dimensions are not multiples of 4. Skipping.\n')
 
   createPatchContent file, ->
-    createPatch 'left', file, -> 
-      createPatch 'right', file, ->
-        createPatch 'top', file, -> 
-          createPatch 'bottom', file, ->
-            _composite = im(file.patchContentWidth + 2, file.patchContentHeight + 2, '#ffffff00').out('-define', 'png:exclude-chunk=date')
-            _composite.draw [ 'image Over 1,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-content.png\'' ]
-            _composite.draw [ 'image Over 1,0 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-topPatch.png\'' ]
-            _composite.draw [ 'image Over 0,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-leftPatch.png\'' ]
-            _composite.draw [ 'image Over ' + (file.patchContentWidth + 1) + ',1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-rightPatch.png\'' ]
-            _composite.draw [ 'image Over 1,' + (file.patchContentHeight + 1) + ' 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-bottomPatch.png\'' ]
-            _composite.write to, (err) ->
-              console.log err if err
-              process.stdout.write 'Saved ' + file.basename + ' in ' + file.density + ' density\n' if verbose
-              cb()
+    createPatch 'left', file, -> createPatch 'right', file, ->
+      createPatch 'top', file, -> createPatch 'bottom', file, ->
+        _composite = im(file.patchContentWidth + 2, file.patchContentHeight + 2, '#ffffff00').out('-define', 'png:exclude-chunk=date')
+        _composite.draw [ 'image Over 1,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-content.png\'' ]
+        _composite.draw [ 'image Over 1,0 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-topPatch.png\'' ]
+        _composite.draw [ 'image Over 0,1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-leftPatch.png\'' ]
+        _composite.draw [ 'image Over ' + (file.patchContentWidth + 1) + ',1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-rightPatch.png\'' ]
+        _composite.draw [ 'image Over 1,' + (file.patchContentHeight + 1) + ' 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-bottomPatch.png\'' ]
+        _composite.write to, (err) ->
+          console.log err if err
+          process.stdout.write 'Saved ' + file.basename + ' in ' + file.density + ' density\n' if verbose
+          cb()
 
 processStandardImage = (file, cb) ->
   if file.width % 4 != 0 or file.height % 4 != 0
