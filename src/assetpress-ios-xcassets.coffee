@@ -18,7 +18,7 @@ appIconGroups =
   iPhone:
     'AppIcon-Settings@2x~iphone.png':
       size: 58
-      conflicts: [ 'AppIconLegacy-Small@2x~iphone.png' ]
+      conflicts: [ 'AppIcon-Legacy-Small@2x~iphone.png' ]
     'AppIcon-Spotlight@2x~iphone.png':
       size: 80
     'AppIcon@2x~iphone.png':
@@ -27,10 +27,10 @@ appIconGroups =
   iPad:
     'AppIcon-Settings~ipad.png':
       size: 29
-      conflicts: [ 'AppIconLegacy-Settings~ipad.png' ]
+      conflicts: [ 'AppIcon-Legacy-Settings~ipad.png' ]
     'AppIcon-Settings@2x~ipad.png':
       size: 58
-      conflicts: [ 'AppIconLegacy-Settings@2x~ipad.png' ]
+      conflicts: [ 'AppIcon-Legacy-Settings@2x~ipad.png' ]
     'AppIcon-Spotlight~ipad.png':
       size: 40
     'AppIcon-Spotlight@2x~ipad.png':
@@ -73,27 +73,27 @@ appIconGroups =
       role: 'companionSettings'
 
   iPhoneLegacy:
-    'AppIconLegacy-Small~iphone.png':
+    'AppIcon-Legacy-Small~iphone.png':
       size: 29
-    'AppIconLegacy-Small@2x~iphone.png':
+    'AppIcon-Legacy-Small@2x~iphone.png':
       size: 58
-    'AppIconLegacy~iphone.png':
+    'AppIcon-Legacy~iphone.png':
       size: 57
-    'AppIconLegacy@2x~iphone.png':
+    'AppIcon-Legacy@2x~iphone.png':
       size: 114
 
   iPadLegacy:
-    'AppIconLegacy-Settings~ipad.png':
+    'AppIcon-Legacy-Settings~ipad.png':
       size: 29
-    'AppIconLegacy-Settings@2x~ipad.png':
+    'AppIcon-Legacy-Settings@2x~ipad.png':
       size: 58
-    'AppIconLegacy-Spotlight~ipad.png':
+    'AppIcon-Legacy-Spotlight~ipad.png':
       size: 50
-    'AppIconLegacy-Spotlight@2x~ipad.png':
+    'AppIcon-Legacy-Spotlight@2x~ipad.png':
       size: 100
-    'AppIconLegacy~ipad.png':
+    'AppIcon-Legacy~ipad.png':
       size: 72
-    'AppIconLegacy@2x~ipad.png':
+    'AppIcon-Legacy@2x~ipad.png':
       size: 144
 
 appIconList = []
@@ -157,29 +157,29 @@ launchImageGroups =
       height: 390
 
   iPhoneLegacyPortrait:
-    'DefaultLegacy~iphone.png':
+    'Default-Legacy~iphone.png':
       width: 320
       height: 480
-    'DefaultLegacy@2x~iphone.png':
+    'Default-Legacy@2x~iphone.png':
       width: 640
       height: 960
-    'DefaultLegacy-568h@2x~iphone.png':
+    'Default-Legacy-568h@2x~iphone.png':
       width: 640
       height: 1136
 
   iPadLegacyPortrait:
-    'DefaultLegacy-Portrait~ipad.png':
+    'Default-Legacy-Portrait~ipad.png':
       width: 768
       height: 1024
-    'DefaultLegacy-Portrait@2x~ipad.png':
+    'Default-Legacy-Portrait@2x~ipad.png':
       width: 1536
       height: 2048
 
   iPadLegacyLandscape:
-    'DefaultLegacy-Landscape~ipad.png':
+    'Default-Legacy-Landscape~ipad.png':
       width: 1024
       height: 768
-    'DefaultLegacy-Landscape@2x~ipad.png':
+    'Default-Legacy-Landscape@2x~ipad.png':
       width: 2048
       height: 1536
 
@@ -307,9 +307,10 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
   JSON.stringify contents
 
 getAppIconInfo = (needle) ->
+  bareNeedle = bareFormatAppIcon needle
   for groupName of appIconGroups
     filenames = _.keys appIconGroups[groupName]
-    return appIconGroups[groupName][needle] if _.contains filenames, needle
+    return appIconGroups[groupName][bareNeedle] if _.contains filenames, bareNeedle
   false
 
 getLaunchImageInfo = (needle) ->
@@ -330,11 +331,29 @@ getImageSubtype = (filename) ->
     return number + 'mm'
   false
 
+bareFormatAppIcon = (name) ->
+  nameRoot = name.split(/-|~|@/)[0]
+  nameRootSuffix = nameRoot.substr(7) # AppIcon
+  specifier = name.substr(7 + nameRootSuffix.length)
+  barename = 'AppIcon' + specifier
+  barename
+
+module.exports.bareFormatAppIcon = bareFormatAppIcon
+
 resourceListWithRequiredGroups = (filenames, groupedList) ->
-  requiredGroups = ( groupName for groupName of groupedList when _.intersection(filenames, _.keys(groupedList[groupName])).length )
+  firstFilename = filenames[0]
+  nameRoot = firstFilename.split(/-|~|@/)[0]
+  nameRootSuffix = nameRoot.substr(7) # AppIcon
+
+  bareFilenames = _.map filenames, bareFormatAppIcon
+  requiredGroups = ( groupName for groupName of groupedList when _.intersection(bareFilenames, _.keys(groupedList[groupName])).length )
   filteredGroups = _.pick groupedList, requiredGroups
   result = []
-  result.push key for key, value of groupContents for groupName, groupContents of filteredGroups
+  for groupName, groupContents of filteredGroups
+    for key, value of groupContents
+        specifier = key.substr(7)
+        keyWithReattachedSuffix = key.substr(0,7) + nameRootSuffix + specifier
+        result.push keyWithReattachedSuffix
   result
 
 module.exports.createContentsJSON = (describedDirectory, globalOptions) ->

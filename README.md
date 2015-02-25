@@ -2,7 +2,7 @@
 
 # AssetPress
 
-Version 1.0.1
+Version 1.1.0
 
 AssetPress is a high quality asset resizer for iOS and Android. It fits in the gap between designer drawing the design, and developer getting resources all nicely sliced and resized in every needed resolution. AssetPress is smart and powerful:
 
@@ -102,6 +102,16 @@ You can use AssetPress not only from command line, but also as a library. Exampl
         iosMaximumPad: 2
         iosXcassets: false
     });
+
+## Changelog
+
+### 1.1.0
+
+iOS supports multiple AppIcons. Addition icons must be named `AppIcon<MODIFIER>`, such as AppIconTestflight@2x.png
+
+### 1.0
+
+Initial release. Android supports resizing from xxxhdpi to lower resolutions, 9-patch resizing, no-dpi. iOS supports resizing from any resolution to any lower, includes Xcassets folder generator.
 
 ## Contributing
 

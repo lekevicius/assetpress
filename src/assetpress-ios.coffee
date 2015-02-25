@@ -68,9 +68,9 @@ processImage = (task, cb) ->
 
     if info.id.indexOf('AppIcon') is 0
       unchangedOutputPath = outputPath
-      if !_.contains iOSAssetPressXCAssets.appIconList, outputPath
+      if !_.contains iOSAssetPressXCAssets.appIconList, iOSAssetPressXCAssets.bareFormatAppIcon(outputPath)
         iPhoneOutputPath = info.id + scaleSuffix + '~iphone' + info.extension
-        if _.contains iOSAssetPressXCAssets.appIconList, iPhoneOutputPath
+        if _.contains iOSAssetPressXCAssets.appIconList, iOSAssetPressXCAssets.bareFormatAppIcon(iPhoneOutputPath)
           device = task.device = 'iphone'
           deviceSuffix = '~iphone'
           outputPath = iPhoneOutputPath
@@ -109,8 +109,10 @@ processImage = (task, cb) ->
 
     if xcassets
       if info.id.indexOf('AppIcon') is 0
-        outputPath = 'AppIcon.appiconset/' + info.id + scaleSuffix + deviceSuffix + info.extension
-        fs.ensureDirSync outputDirectory + 'AppIcon.appiconset/'
+        appIconRoot = info.id.split(/-|~|@/)[0]
+        appIconRootSuffix = appIconRoot.substr(7) # AppIcon
+        outputPath = "AppIcon#{ appIconRootSuffix }.appiconset/" + info.id + scaleSuffix + deviceSuffix + info.extension
+        fs.ensureDirSync outputDirectory + "AppIcon#{ appIconRootSuffix }.appiconset/"
       else if info.id.indexOf('Default') is 0
         outputPath = 'LaunchImage.launchimage/' + info.id + scaleSuffix + deviceSuffix + info.extension
         fs.ensureDirSync outputDirectory + 'LaunchImage.launchimage/'
