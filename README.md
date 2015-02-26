@@ -2,8 +2,6 @@
 
 # AssetPress
 
-Version 1.1.0
-
 AssetPress is a high quality asset resizer for iOS and Android. It fits in the gap between designer drawing the design, and developer getting resources all nicely sliced and resized in every needed resolution. AssetPress is smart and powerful:
 
 * **High quality resizing.** A lot of care went into finding the best resizing algorithm that preserves sharp edges and smooth curves.
@@ -104,6 +102,10 @@ You can use AssetPress not only from command line, but also as a library. Exampl
     });
 
 ## Changelog
+
+### 1.1.1
+
+Fixes a bug with LaunchImage generator.
 
 ### 1.1.0
 

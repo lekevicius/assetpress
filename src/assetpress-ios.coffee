@@ -68,9 +68,9 @@ processImage = (task, cb) ->
 
     if info.id.indexOf('AppIcon') is 0
       unchangedOutputPath = outputPath
-      if !_.contains iOSAssetPressXCAssets.appIconList, iOSAssetPressXCAssets.bareFormatAppIcon(outputPath)
+      if !_.contains iOSAssetPressXCAssets.appIconList, iOSAssetPressXCAssets.bareFormat(outputPath, 'AppIcon')
         iPhoneOutputPath = info.id + scaleSuffix + '~iphone' + info.extension
-        if _.contains iOSAssetPressXCAssets.appIconList, iOSAssetPressXCAssets.bareFormatAppIcon(iPhoneOutputPath)
+        if _.contains iOSAssetPressXCAssets.appIconList, iOSAssetPressXCAssets.bareFormat(iPhoneOutputPath, 'AppIcon')
           device = task.device = 'iphone'
           deviceSuffix = '~iphone'
           outputPath = iPhoneOutputPath

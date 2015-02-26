@@ -238,7 +238,7 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
       version: 1
       author: 'xcode'
     properties: 'pre-rendered': true
-  filteredAppIconList = resourceListWithRequiredGroups filenames, appIconGroups
+  filteredAppIconList = resourceListWithRequiredGroups filenames, appIconGroups, 'AppIcon'
   conflictSkipList = []
   for appIconName in filteredAppIconList
     appIconInfo = getAppIconInfo appIconName
@@ -284,7 +284,10 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
     info:
       version: 1
       author: 'xcode'
-  filteredLaunchImageList = resourceListWithRequiredGroups filenames, launchImageGroups
+
+  console.log filenames
+  filteredLaunchImageList = resourceListWithRequiredGroups filenames, launchImageGroups, 'Default'
+  console.log filteredLaunchImageList
   for launchImageName in filteredLaunchImageList
     idiom = launchImageName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
@@ -307,7 +310,7 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
   JSON.stringify contents
 
 getAppIconInfo = (needle) ->
-  bareNeedle = bareFormatAppIcon needle
+  bareNeedle = bareFormat needle, 'AppIcon'
   for groupName of appIconGroups
     filenames = _.keys appIconGroups[groupName]
     return appIconGroups[groupName][bareNeedle] if _.contains filenames, bareNeedle
@@ -331,28 +334,28 @@ getImageSubtype = (filename) ->
     return number + 'mm'
   false
 
-bareFormatAppIcon = (name) ->
+bareFormat = (name, startingWith) ->
   nameRoot = name.split(/-|~|@/)[0]
-  nameRootSuffix = nameRoot.substr(7) # AppIcon
-  specifier = name.substr(7 + nameRootSuffix.length)
-  barename = 'AppIcon' + specifier
+  nameRootSuffix = nameRoot.substr(startingWith.length) # AppIcon
+  specifier = name.substr(startingWith.length + nameRootSuffix.length)
+  barename = startingWith + specifier
   barename
 
-module.exports.bareFormatAppIcon = bareFormatAppIcon
+module.exports.bareFormat = bareFormat
 
-resourceListWithRequiredGroups = (filenames, groupedList) ->
+resourceListWithRequiredGroups = (filenames, groupedList, startingWith) ->
   firstFilename = filenames[0]
   nameRoot = firstFilename.split(/-|~|@/)[0]
-  nameRootSuffix = nameRoot.substr(7) # AppIcon
+  nameRootSuffix = nameRoot.substr(startingWith.length)
 
-  bareFilenames = _.map filenames, bareFormatAppIcon
+  bareFilenames = _.map filenames, (name) -> bareFormat name, startingWith
   requiredGroups = ( groupName for groupName of groupedList when _.intersection(bareFilenames, _.keys(groupedList[groupName])).length )
   filteredGroups = _.pick groupedList, requiredGroups
   result = []
   for groupName, groupContents of filteredGroups
     for key, value of groupContents
-        specifier = key.substr(7)
-        keyWithReattachedSuffix = key.substr(0,7) + nameRootSuffix + specifier
+        specifier = key.substr(startingWith.length)
+        keyWithReattachedSuffix = startingWith + nameRootSuffix + specifier
         result.push keyWithReattachedSuffix
   result
 

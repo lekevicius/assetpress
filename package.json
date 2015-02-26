@@ -1,6 +1,6 @@
 {
   "name": "assetpress",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "High quality asset resizer for iOS and Android. Features Xcassets generator and the best 9-patch resizer.",
   "keywords": [
     "android",
