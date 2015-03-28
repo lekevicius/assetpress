@@ -4,11 +4,12 @@ _ = require 'lodash'
 walk = require 'walkdir'
 androidAssetPress = require './assetpress-android'
 iOSAssetPress = require './assetpress-ios'
+workflow = require './assetpress-workflow'
+util = require './utilities'
 
 module.exports = (options) ->
 
   defaults = 
-    cwd: process.cwd()
     inputDirectoryName: 'source'
     outputDirectoryName: false
     verbose: false
@@ -16,8 +17,8 @@ module.exports = (options) ->
     os: 'ios'
     androidLdpi: false
     androidXxxhdpi: false
-    iosMinimumUniversal: 1
-    iosMaximumUniversal: 3
+    iosMinimum: 1
+    iosMaximum: 3
     iosMinimumPhone: 2
     iosMaximumPhone: 3
     iosMinimumPad: 1
@@ -25,34 +26,38 @@ module.exports = (options) ->
     iosXcassets: false
   options = _.defaults options, defaults
 
-  cwd = options.cwd
-  cwd += '/' if cwd.slice(-1) != '/'
+  inputDirectory = util.resolvePath options.inputDirectoryName
+  inputDetails = path.parse inputDirectory
 
-  inputDirectory = path.join cwd, options.inputDirectoryName
-  inputDirectory += '/' if inputDirectory.slice(-1) != '/'
-  return process.stdout.write "Input directory #{ inputDirectory } does not exist." if !fs.existsSync inputDirectory
-    
-  androidOptions = 
-    ldpi: options.androidLdpi
-    xxxhdpi: options.androidXxxhdpi
+  if inputDetails.ext.toLowerCase() is '.json' and _.endsWith(inputDetails.name.toLowerCase(), '.assetpress')
+    # Hello workflow!
+    # Inherit flags: --verbose, 
+    workflowData = require inputDirectory
+    workflow workflowData, inputDetails.dir, options
+  else
+    inputDirectory += '/' if inputDirectory.slice(-1) != '/'
+    return process.stdout.write "Input directory #{ inputDirectory } does not exist." if !fs.existsSync inputDirectory
+      
+    androidOptions = 
+      ldpi: options.androidLdpi
+      xxxhdpi: options.androidXxxhdpi
 
-  iosOptions = 
-    minimumUniversal: parseInt options.iosMinimumUniversal
-    maximumUniversal: parseInt options.iosMaximumUniversal
-    minimumPhone: parseInt options.iosMinimumPhone
-    maximumPhone: parseInt options.iosMaximumPhone
-    minimumPad: parseInt options.iosMinimumPad
-    maximumPad: parseInt options.iosMaximumPad
-    xcassets: options.iosXcassets
+    iosOptions = 
+      minimum: parseInt options.iosMinimum
+      maximum: parseInt options.iosMaximum
+      minimumPhone: parseInt options.iosMinimumPhone
+      maximumPhone: parseInt options.iosMaximumPhone
+      minimumPad: parseInt options.iosMinimumPad
+      maximumPad: parseInt options.iosMaximumPad
+      xcassets: options.iosXcassets
 
-  globalOptions = 
-    cwd: cwd
-    verbose: options.verbose
-    clean: options.clean
-    outputDirectoryName: options.outputDirectoryName
+    globalOptions = 
+      verbose: options.verbose
+      clean: options.clean
+      outputDirectoryName: options.outputDirectoryName
 
-  switch options.os
-    when 'android'
-      androidAssetPress inputDirectory, androidOptions, globalOptions
-    when 'ios'
-      iOSAssetPress inputDirectory, iosOptions, globalOptions
+    switch options.os
+      when 'android'
+        androidAssetPress inputDirectory, androidOptions, globalOptions
+      when 'ios'
+        iOSAssetPress inputDirectory, iosOptions, globalOptions

@@ -4,6 +4,7 @@ path = require 'path'
 _ = require 'lodash'
 async = require 'async'
 walk = require 'walkdir'
+util = require './utilities'
 
 iOSAssetPressXCAssets = require './assetpress-ios-xcassets'
 
@@ -42,8 +43,8 @@ minimumPhone = 2
 maximumPhone = 3
 minimumPad = 1
 maximumPad = 2
-minimumUniversal = 1
-maximumUniversal = 3
+minimum = 1
+maximum = 3
 
 
 processImage = (task, cb) ->
@@ -206,12 +207,12 @@ module.exports = (directory, options, globalSettings) ->
   maximumPhone = options.maximumPhone
   minimumPad = options.minimumPad
   maximumPad = options.maximumPad
-  minimumUniversal = options.minimumUniversal
-  maximumUniversal = options.maximumUniversal
+  minimum = options.minimum
+  maximum = options.maximum
   inputDirectory = directory
   outputDirectoryName = globalOptions.outputDirectoryName or 'Images'
   outputDirectoryName = outputDirectoryName + '.xcassets' if xcassets
-  outputDirectory = path.join globalOptions.cwd, outputDirectoryName
+  outputDirectory = util.resolvePath outputDirectoryName
   outputDirectory += '/' if outputDirectory.slice(-1) != '/'
   fs.removeSync outputDirectory if globalOptions.clean
   fs.ensureDirSync outputDirectory
@@ -244,8 +245,8 @@ module.exports = (directory, options, globalSettings) ->
         absoluteMinDensity = 2
         absoluteMaxDensity = 3
       when 'universal'
-        minDensity = minimumUniversal
-        maxDensity = maximumUniversal
+        minDensity = minimum
+        maxDensity = maximum
         absoluteMinDensity = 1
         absoluteMaxDensity = 3
 

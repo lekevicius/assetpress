@@ -47,8 +47,6 @@ For example, if you are in a folder with "sources" folder, full of Android 4x re
 
     -i, --ios       iOS mode. Default, flag is not necessary.
     -a, --android   Android mode.
-        --cwd       Overwrite current working directory.
-                    Input and Output paths are relative to it.
     -o, --output    Output directory name.
     -c, --clean     Clean output directory before resizing.
     -v, --verbose   Verbose output.
@@ -92,8 +90,8 @@ You can use AssetPress not only from command line, but also as a library. Exampl
         os: 'ios'
         androidLdpi: false
         androidXxxhdpi: false
-        iosMinimumUniversal: 1
-        iosMaximumUniversal: 3
+        iosMinimum: 1
+        iosMaximum: 3
         iosMinimumPhone: 2
         iosMaximumPhone: 3
         iosMinimumPad: 1

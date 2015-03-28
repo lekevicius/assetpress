@@ -4,6 +4,7 @@ path = require 'path'
 _ = require 'lodash'
 async = require 'async'
 tmp = require 'temporary'
+util = require './utilities'
 
 densities = 
   ldpi: 0.75
@@ -146,7 +147,7 @@ module.exports = (directory, options, globalOptions) ->
   temporaryDirectory = temporaryDirectoryObject.path
   temporaryDirectory += '/' if temporaryDirectory.slice(-1) isnt '/'
   outputDirectoryName = globalOptions.outputDirectoryName or 'res'
-  outputDirectory = path.join globalOptions.cwd, outputDirectoryName
+  outputDirectory = util.resolvePath outputDirectoryName
   outputDirectory += '/' if outputDirectory.slice(-1) isnt '/'
   verbose = globalOptions.verbose
   fs.removeSync outputDirectory if globalOptions.clean and fs.existsSync(outputDirectory)

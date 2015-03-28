@@ -16,8 +16,6 @@ doc = """
       Usage: assetpress [options] input_directory_name
         -i, --ios       iOS mode. Default, flag is not necessary.
         -a, --android   Android mode.
-            --cwd       Overwrite current working directory.
-                        Input and Output paths are relative to it.
         -o, --output    Output directory name.
         -c, --clean     Clean output directory before resizing.
         -v, --verbose   Verbose output.
@@ -53,19 +51,27 @@ return process.stdout.write(doc) if argv.help or argv.h
 
 return process.stdout.write "AssetPress version #{ info.version }\n" if argv.version
 
-require('./assetpress')
-  cwd: argv.cwd
-  inputDirectoryName: if argv._.length then argv._[0] else undefined
-  outputDirectoryName: argv.output or argv.o
-  verbose: argv.verbose or argv.v
-  clean: argv.clean or argv.c
-  os: if (argv.ios or argv.i) then 'ios' else if (argv.android or argv.a) then 'android' else undefined
-  iosMinimumUniversal: argv.min
-  iosMaximumUniversal: argv.max
-  iosMinimumPhone: argv['min-phone']
-  iosMaximumPhone: argv['max-phone']
-  iosMinimumPad: argv['min-pad']
-  iosMaximumPad: argv['max-pad']
-  iosXcassets: argv.xcassets or argv.x
-  androidLdpi: argv.ldpi
-  androidXxxhdpi: argv.xxxhdpi
+
+if process.argv[2] is 'split'
+  argv = require('minimist')(process.argv.slice(3))
+  require('./assetpress-splitter')
+    source: if argv._.length then argv._[0] else if argv.input then argv.input else undefined
+    resourcesDestination: argv.resources or argv.r
+    screensDestination: argv.screens or argv.s
+    verbose: argv.verbose or argv.v
+else
+  require('./assetpress')
+    inputDirectoryName: if argv._.length then argv._[0] else if argv.input then argv.input else undefined
+    outputDirectoryName: argv.output or argv.o
+    verbose: argv.verbose or argv.v
+    clean: argv.clean or argv.c
+    os: if (argv.ios or argv.i) then 'ios' else if (argv.android or argv.a) then 'android' else undefined
+    iosMinimum: argv.min
+    iosMaximum: argv.max
+    iosMinimumPhone: argv['min-phone']
+    iosMaximumPhone: argv['max-phone']
+    iosMinimumPad: argv['min-pad']
+    iosMaximumPad: argv['max-pad']
+    iosXcassets: argv.xcassets or argv.x
+    androidLdpi: argv.ldpi
+    androidXxxhdpi: argv.xxxhdpi
