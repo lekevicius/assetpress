@@ -60,7 +60,7 @@ module.exports = (options) ->
         resourcesDestination: '.'
         screensDestination: screensPath
       }
-      process.stdout.write "Splitted screens to #{ screensPath }\n" if options.verbose
+      process.stdout.write "Split screens to #{ screensPath }\n" if options.verbose
 
     console.log options
     if options.noResize

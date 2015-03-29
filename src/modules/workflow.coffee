@@ -64,7 +64,7 @@ performWorkflow = (workflowObject, cb) ->
       resourcesDestination: '.'
       screensDestination: screensPath
     }
-    process.stdout.write "Splitted screens to #{ screensPath }\n" if verbose
+    process.stdout.write "Split screens to #{ screensPath }\n" if verbose
 
   if workflowObject.assetpress and _.isObject(workflowObject.assetpress)
     assetPressOptions = workflowObject.assetpress

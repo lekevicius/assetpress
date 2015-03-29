@@ -1,7 +1,7 @@
 {
   "name": "assetpress",
-  "version": "1.1.1",
-  "description": "High quality asset resizer for iOS and Android. Features Xcassets generator and the best 9-patch resizer.",
+  "version": "2.0.0",
+  "description": "High quality asset resizer for iOS and Android and design workflow tools. Features Sketch exporting, Xcassets generator and the best 9-patch resizer.",
   "keywords": [
     "android",
     "ios",
@@ -16,7 +16,10 @@
     "ipad",
     "retina",
     "xxhdpi",
-    "xhdpi"
+    "xhdpi",
+    "9-patch",
+    "9patch",
+    "sketch"
   ],
   "homepage": "http://lekevicius.com/projects/assetpress",
   "repository": {
