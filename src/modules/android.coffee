@@ -1,10 +1,12 @@
-im = require('gm').subClass imageMagick: true
 fs = require 'fs-extra'
 path = require 'path'
+
 _ = require 'lodash'
+im = require('gm').subClass imageMagick: true
 async = require 'async'
 tmp = require 'temporary'
-util = require './utilities'
+
+util = require '../utilities'
 
 densities = 
   ldpi: 0.75
@@ -116,7 +118,7 @@ process9PatchImage = (file, cb) ->
         _composite.draw [ 'image Over ' + (file.patchContentWidth + 1) + ',1 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-rightPatch.png\'' ]
         _composite.draw [ 'image Over 1,' + (file.patchContentHeight + 1) + ' 0,0 \'' + temporaryDirectory + file.density + '-' + file.basename + '-bottomPatch.png\'' ]
         _composite.write to, (err) ->
-          console.log err if err
+          process.stdout.write err if err
           process.stdout.write 'Saved ' + file.basename + ' in ' + file.density + ' density\n' if verbose
           cb()
 

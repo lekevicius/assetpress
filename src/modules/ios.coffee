@@ -1,12 +1,13 @@
-im = require('gm').subClass imageMagick: true
 fs = require 'fs-extra'
 path = require 'path'
+
 _ = require 'lodash'
+im = require('gm').subClass imageMagick: true
 async = require 'async'
 walk = require 'walkdir'
-util = require './utilities'
 
-iOSAssetPressXCAssets = require './assetpress-ios-xcassets'
+iOSAssetPressXCAssets = require './ios-xcassets'
+util = require '../utilities'
 
 scalerExceptions = 
   'Default-Landscape736h': minDensity: 3

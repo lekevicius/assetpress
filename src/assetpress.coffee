@@ -1,17 +1,22 @@
 fs = require 'fs-extra'
 path = require 'path'
+
 _ = require 'lodash'
 walk = require 'walkdir'
-androidAssetPress = require './assetpress-android'
-iOSAssetPress = require './assetpress-ios'
-workflow = require './assetpress-workflow'
+
+androidAssetPress = require './modules/android'
+iOSAssetPress = require './modules/ios'
+workflow = require './modules/workflow'
+splitter = require './modules/splitter'
 util = require './utilities'
 
 module.exports = (options) ->
 
   defaults = 
-    inputDirectoryName: 'source'
-    outputDirectoryName: false
+    inputDirectory: 'source'
+    outputDirectory: false
+    screensDirectory: false
+    noResize: false
     verbose: false
     clean: false
     os: 'ios'
@@ -27,17 +32,41 @@ module.exports = (options) ->
     gitMessage: false
     complete: -> # noop
   options = _.defaults options, defaults
+  options.inputDirectory = 'source' if options.inputDirectory is true
 
-  inputDirectory = util.resolvePath options.inputDirectoryName
+  inputDirectory = util.resolvePath options.inputDirectory
   inputDetails = path.parse inputDirectory
+
+  options.screensDirectory = path.basename(inputDirectory, '.sketch') + ' Screens' if options.screensDirectory is true
 
   if inputDetails.ext.toLowerCase() is '.json' and _.endsWith(inputDetails.name.toLowerCase(), '.assetpress')
     workflowData = require inputDirectory
     workflow workflowData, inputDetails.dir, options
+  else if inputDetails.ext.toLowerCase() is '.sketch'
+    workflowData = {
+      source: inputDirectory
+      assetpress: options
+      screens: options.screensDirectory
+    }
+    workflow workflowData, inputDetails.dir, options
   else
     inputDirectory = util.addTrailingSlash inputDirectory
     return process.stdout.write "Input directory #{ inputDirectory } does not exist." if !fs.existsSync inputDirectory
-      
+    
+    if options.screensDirectory and _.isString(options.screensDirectory)
+      screensPath = util.resolvePath options.screensDirectory, inputDetails.dir
+      splitter {
+        source: inputDirectory
+        resourcesDestination: '.'
+        screensDestination: screensPath
+      }
+      process.stdout.write "Splitted screens to #{ screensPath }\n" if options.verbose
+
+    console.log options
+    if options.noResize
+      options.complete()
+      return
+
     androidOptions = 
       ldpi: options.androidLdpi
       xxxhdpi: options.androidXxxhdpi
@@ -54,7 +83,7 @@ module.exports = (options) ->
     globalOptions = 
       verbose: options.verbose
       clean: options.clean
-      outputDirectoryName: options.outputDirectoryName
+      outputDirectoryName: options.outputDirectory
       complete: options.complete
 
     switch options.os

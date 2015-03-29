@@ -1,12 +1,12 @@
 fs = require 'fs-extra'
 path = require 'path'
+
 _ = require 'lodash'
 walk = require 'walkdir'
 tmp = require 'temporary'
 rimraf = require('rimraf').sync
-util = require './utilities'
 
-# Delete tmp directory
+util = require '../utilities'
 
 module.exports = (options) ->
 

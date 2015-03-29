@@ -1,13 +1,14 @@
 fs = require 'fs-extra'
 path = require 'path'
+
 _ = require 'lodash'
 walk = require 'walkdir'
 async = require 'async'
 tmp = require 'temporary'
-splitter = require './assetpress-splitter'
-workflow = require './assetpress-workflow'
-util = require './utilities'
 shell = require 'shelljs'
+
+splitter = require './splitter'
+util = require '../utilities'
 
 verbose = false
 workflowLocation = ''
@@ -16,11 +17,9 @@ globalOptions = {}
 
 performWorkflow = (workflowObject, cb) ->
   sourcePath = util.resolvePath workflowObject.source, workflowLocation
-  return process.stdout.write "Error: Source #{ sourcePath } does not exist.\n" if !fs.existsSync sourcePath
-
-  temporaryDirectoryObject = new tmp.Dir
-  temporaryDirectory = temporaryDirectoryObject.path
-  temporaryDirectory += '/' if temporaryDirectory.slice(-1) isnt '/'
+  if !fs.existsSync sourcePath
+    process.stdout.write "Error: Source #{ sourcePath } does not exist.\n"
+    return cb()
 
   if workflowObject.output
     if _.isString(workflowObject.output)
@@ -30,10 +29,15 @@ performWorkflow = (workflowObject, cb) ->
         outputObject = workflowObject.output
         outputObject.destination = util.resolvePath(workflowObject.output.destination, workflowLocation)
       else
-        return process.stdout.write "Error: Output needs to be a string, an object with 'destination' key or nothing.\n"
+        process.stdout.write "Error: Output needs to be a string, an object with 'destination' key or nothing.\n"
+        return cb()
   else
     suggestedDestination = util.resolvePath '../AssetPress Resources', sourcePath
     outputObject = { destination: suggestedDestination, suggestedDestination: true }
+
+  temporaryDirectoryObject = new tmp.Dir
+  temporaryDirectory = temporaryDirectoryObject.path
+  temporaryDirectory = util.addTrailingSlash temporaryDirectory
 
   if fs.lstatSync(sourcePath).isDirectory()
     fs.copySync sourcePath, temporaryDirectory + 'source'
@@ -45,9 +49,13 @@ performWorkflow = (workflowObject, cb) ->
         shellOutput = shell.exec("sketchtool export slices --output=#{ util.escapeShell(temporaryDirectory + 'source') } #{ util.escapeShell(sourcePath) }", { silent: !verbose })
         outputObject.destination = util.resolvePath("../#{ path.basename(sourcePath, '.sketch') } Resources", sourcePath) if outputObject.suggestedDestination
       else
-        return process.stdout.write "Error: Sketchtool is required. Download it from http://bohemiancoding.com/sketch/tool/\n"
+        process.stdout.write "Error: Sketchtool is required. Download it from http://bohemiancoding.com/sketch/tool/\n"
+        fs.removeSync temporaryDirectory
+        return cb()
     else
-      return process.stdout.write "Error: AssetPress workflow currently only accepts directories and Sketch files as source.\n"
+      process.stdout.write "Error: AssetPress workflow currently only accepts directories and Sketch files as source.\n"
+      fs.removeSync temporaryDirectory
+      return cb()
 
   if workflowObject.screens and _.isString(workflowObject.screens)
     screensPath = util.resolvePath workflowObject.screens, workflowLocation
@@ -63,8 +71,9 @@ performWorkflow = (workflowObject, cb) ->
     unless assetPressOptions.os
       process.stdout.write "Warning: Running AssetPress with iOS implied. Please set 'os' value in assetpress object.\n"
       assetPressOptions.os = 'ios'
-    assetPressOptions.inputDirectoryName = temporaryDirectory + 'source'
-    assetPressOptions.outputDirectoryName = 'output'
+    assetPressOptions.inputDirectory = temporaryDirectory + 'source'
+    assetPressOptions.outputDirectory = 'output'
+    assetPressOptions.screensDirectory = false
     assetPressOptions.verbose = verbose
     assetPressOptions.complete = -> 
       process.stdout.write "Completed AssetPress for #{ sourcePath }\n" if verbose
@@ -97,8 +106,8 @@ workflowMoveOutput = (from, to, workflowObject, temporaryDirectory, cb) ->
 
   if destinationSlash.indexOf(sourceSlash) is 0
     process.stdout.write "Error: destination is inside source.\n"
-    cb()
-    return
+    fs.removeSync temporaryDirectory
+    return cb()
 
   fs.removeSync destinationSlash # MAYBE - would it be possible to have a non-clean export?
   fs.mkdirpSync path.resolve(destinationSlash, '..')
@@ -143,7 +152,7 @@ module.exports = (data, location, options) ->
   globalOptions = options
   verbose = options.verbose
   workflowLocation = location
-  assetpress = require './assetpress'
+  assetpress = require '../assetpress'
 
   queue = async.queue performWorkflow, 1
   queue.drain = -> # nil.
@@ -152,5 +161,5 @@ module.exports = (data, location, options) ->
     for workflowObject in data
       queue.push workflowObject
   else if _.isObject data
-    queue.push workflowObject
+    queue.push data
 
