@@ -35,7 +35,7 @@ module.exports = (options) ->
     workflowData = require inputDirectory
     workflow workflowData, inputDetails.dir, options
   else
-    inputDirectory += '/' if inputDirectory.slice(-1) != '/'
+    inputDirectory = util.addTrailingSlash inputDirectory
     return process.stdout.write "Input directory #{ inputDirectory } does not exist." if !fs.existsSync inputDirectory
       
     androidOptions = 

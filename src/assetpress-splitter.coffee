@@ -23,7 +23,7 @@ module.exports = (options) ->
 
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = temporaryDirectoryObject.path
-  temporaryDirectory += '/' if temporaryDirectory.slice(-1) isnt '/'
+  temporaryDirectory = util.addTrailingSlash temporaryDirectory
 
   tmpResourcesDirectory = temporaryDirectory + 'resources'
   fs.mkdirsSync tmpResourcesDirectory

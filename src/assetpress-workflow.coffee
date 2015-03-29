@@ -16,21 +16,21 @@ globalOptions = {}
 
 performWorkflow = (workflowObject, cb) ->
   sourcePath = util.resolvePath workflowObject.source, workflowLocation
-  return process.stdout.write "Source #{ sourcePath } does not exist.\n" if !fs.existsSync sourcePath
+  return process.stdout.write "Error: Source #{ sourcePath } does not exist.\n" if !fs.existsSync sourcePath
 
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = temporaryDirectoryObject.path
   temporaryDirectory += '/' if temporaryDirectory.slice(-1) isnt '/'
-  console.log temporaryDirectory
 
   if workflowObject.output
     if _.isString(workflowObject.output)
-      outputObject = { destination: workflowObject.output }
+      outputObject = { destination: util.resolvePath(workflowObject.output, workflowLocation) }
     else
       if workflowObject.output.destination
         outputObject = workflowObject.output
+        outputObject.destination = util.resolvePath(workflowObject.output.destination, workflowLocation)
       else
-        return process.stdout.write "Output needs to be a string, an object with 'destination' key or nothing.\n"
+        return process.stdout.write "Error: Output needs to be a string, an object with 'destination' key or nothing.\n"
   else
     suggestedDestination = util.resolvePath '../AssetPress Resources', sourcePath
     outputObject = { destination: suggestedDestination, suggestedDestination: true }
@@ -45,9 +45,9 @@ performWorkflow = (workflowObject, cb) ->
         shellOutput = shell.exec("sketchtool export slices --output=#{ util.escapeShell(temporaryDirectory + 'source') } #{ util.escapeShell(sourcePath) }", { silent: !verbose })
         outputObject.destination = util.resolvePath("../#{ path.basename(sourcePath, '.sketch') } Resources", sourcePath) if outputObject.suggestedDestination
       else
-        return process.stdout.write "Sketchtool is required. Download it from http://bohemiancoding.com/sketch/tool/\n"
+        return process.stdout.write "Error: Sketchtool is required. Download it from http://bohemiancoding.com/sketch/tool/\n"
     else
-      return process.stdout.write "AssetPress workflow currently only accepts directories and Sketch files as source.\n"
+      return process.stdout.write "Error: AssetPress workflow currently only accepts directories and Sketch files as source.\n"
 
   if workflowObject.screens and _.isString(workflowObject.screens)
     screensPath = util.resolvePath workflowObject.screens, workflowLocation
@@ -61,7 +61,7 @@ performWorkflow = (workflowObject, cb) ->
   if workflowObject.assetpress and _.isObject(workflowObject.assetpress)
     assetPressOptions = workflowObject.assetpress
     unless assetPressOptions.os
-      process.stdout.write "Running AssetPress with iOS implied. Please set 'os' value in assetpress object.\n"
+      process.stdout.write "Warning: Running AssetPress with iOS implied. Please set 'os' value in assetpress object.\n"
       assetPressOptions.os = 'ios'
     assetPressOptions.inputDirectoryName = temporaryDirectory + 'source'
     assetPressOptions.outputDirectoryName = 'output'
@@ -84,11 +84,13 @@ performWorkflow = (workflowObject, cb) ->
   else
     unless outputObject.suggestedDestination
       workflowMoveOutput(temporaryDirectory + 'source', outputObject, workflowObject, temporaryDirectory, cb)
-    # Otherwise do nothing
+    else
+      # Otherwise do nothing
+      fs.removeSync temporaryDirectory
+      cb()
+    
 
 workflowMoveOutput = (from, to, workflowObject, temporaryDirectory, cb) ->
-
-  console.log from, to
 
   sourceSlash = util.addTrailingSlash(util.resolvePath(workflowObject.source, workflowLocation))
   destinationSlash = util.addTrailingSlash(to.destination)

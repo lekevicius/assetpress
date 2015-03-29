@@ -147,17 +147,22 @@ module.exports = (directory, options, globalSettings) ->
   produceDensities = _.without(produceDensities, 'xxxhdpi') if !options.xxxhdpi
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = temporaryDirectoryObject.path
-  temporaryDirectory += '/' if temporaryDirectory.slice(-1) isnt '/'
+  temporaryDirectory = util.addTrailingSlash temporaryDirectory
   outputDirectoryName = globalOptions.outputDirectoryName or 'res'
-  outputDirectory = util.resolvePath outputDirectoryName
-  outputDirectory += '/' if outputDirectory.slice(-1) isnt '/'
+  outputDirectoryName = util.removeTrailingSlash outputDirectoryName
+  outputDirectoryBase = util.resolvePath '..', directory
+  outputDirectory = util.resolvePath outputDirectoryName, outputDirectoryBase
+  outputDirectory = util.addTrailingSlash outputDirectory
+
   verbose = globalOptions.verbose
   fs.removeSync outputDirectory if globalOptions.clean and fs.existsSync(outputDirectory)
   fs.ensureDirSync outputDirectory
   fs.ensureDirSync outputDirectory + 'drawable-' + density for density in produceDensities
 
   queue = async.queue processImage, 2
-  queue.drain = -> fs.removeSync temporaryDirectory
+  queue.drain = ->
+    fs.removeSync temporaryDirectory
+    globalOptions.complete()
 
   for file in fs.readdirSync(directory)
     continue if file.slice(0, 1) is '.'
