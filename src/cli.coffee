@@ -75,3 +75,4 @@ else
     iosXcassets: argv.xcassets or argv.x
     androidLdpi: argv.ldpi
     androidXxxhdpi: argv.xxxhdpi
+    gitMessage: argv.message or argv.m

@@ -24,14 +24,14 @@ module.exports = (options) ->
     iosMinimumPad: 1
     iosMaximumPad: 2
     iosXcassets: false
+    gitMessage: false
+    complete: -> # noop
   options = _.defaults options, defaults
 
   inputDirectory = util.resolvePath options.inputDirectoryName
   inputDetails = path.parse inputDirectory
 
   if inputDetails.ext.toLowerCase() is '.json' and _.endsWith(inputDetails.name.toLowerCase(), '.assetpress')
-    # Hello workflow!
-    # Inherit flags: --verbose, 
     workflowData = require inputDirectory
     workflow workflowData, inputDetails.dir, options
   else
@@ -55,6 +55,7 @@ module.exports = (options) ->
       verbose: options.verbose
       clean: options.clean
       outputDirectoryName: options.outputDirectoryName
+      complete: options.complete
 
     switch options.os
       when 'android'

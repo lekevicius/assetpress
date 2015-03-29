@@ -211,14 +211,20 @@ module.exports = (directory, options, globalSettings) ->
   maximum = options.maximum
   inputDirectory = directory
   outputDirectoryName = globalOptions.outputDirectoryName or 'Images'
+  outputDirectoryName = util.removeTrailingSlash outputDirectoryName
   outputDirectoryName = outputDirectoryName + '.xcassets' if xcassets
-  outputDirectory = util.resolvePath outputDirectoryName
-  outputDirectory += '/' if outputDirectory.slice(-1) != '/'
+  outputDirectoryBase = util.resolvePath '..', inputDirectory
+  outputDirectory = util.resolvePath outputDirectoryName, outputDirectoryBase
+  outputDirectory = util.addTrailingSlash outputDirectory
   fs.removeSync outputDirectory if globalOptions.clean
   fs.ensureDirSync outputDirectory
 
   queue = async.queue processImage, 4
-  queue.drain = -> iOSAssetPressXCAssets.createContentsJSON(outputDirectory, globalOptions) if xcassets
+  queue.drain = -> 
+    if xcassets
+      iOSAssetPressXCAssets.createContentsJSON(outputDirectory, globalOptions)
+    else
+      globalOptions.complete()
 
   imageDescriptors = describeInputDirectory inputDirectory
 

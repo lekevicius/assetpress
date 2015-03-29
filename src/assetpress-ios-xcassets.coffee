@@ -285,9 +285,7 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
       version: 1
       author: 'xcode'
 
-  console.log filenames
   filteredLaunchImageList = resourceListWithRequiredGroups filenames, launchImageGroups, 'Default'
-  console.log filteredLaunchImageList
   for launchImageName in filteredLaunchImageList
     idiom = launchImageName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
@@ -382,3 +380,5 @@ module.exports.createContentsJSON = (describedDirectory, globalOptions) ->
     contents = contentsJSONForImage directoryContents, basename if /\.imageset$/.test directory
     fs.writeFileSync outputDirectory + directory + '/Contents.json', contents
     process.stdout.write 'Created Contents.json for ' + directory + '\n' if verbose
+    
+  globalOptions.complete()

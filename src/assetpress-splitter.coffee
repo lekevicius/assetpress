@@ -4,6 +4,7 @@ _ = require 'lodash'
 walk = require 'walkdir'
 tmp = require 'temporary'
 rimraf = require('rimraf').sync
+util = require './utilities'
 
 # Delete tmp directory
 
@@ -16,9 +17,9 @@ module.exports = (options) ->
     verbose: false
   options = _.defaults options, defaults
 
-  sourceDirectory = options.source
-  resourcesDestinationDirectory = path.resolve options.source, options.resourcesDestination
-  screensDestinationDirectory = path.resolve options.source, options.screensDestination
+  sourceDirectory = util.resolvePath options.source
+  resourcesDestinationDirectory = util.resolvePath options.resourcesDestination, options.source
+  screensDestinationDirectory = util.resolvePath options.screensDestination, options.source
 
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = temporaryDirectoryObject.path

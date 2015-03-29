@@ -24,6 +24,7 @@ allowedExtensions = [
 resizeFilter = 'Box'
 temporaryDirectory = ''
 outputDirectory = ''
+globalOptions = {}
 verbose = false
 
 processImage = (task, cb) ->
@@ -139,7 +140,8 @@ processNoDpiImage = (file, cb) ->
     process.stdout.write 'Saved nodpi image: ' + file.basename + '\n' if verbose
     cb()
 
-module.exports = (directory, options, globalOptions) ->
+module.exports = (directory, options, globalSettings) ->
+  globalOptions = globalSettings
   produceDensities = _.keys densities
   produceDensities = _.without(produceDensities, 'ldpi') if !options.ldpi
   produceDensities = _.without(produceDensities, 'xxxhdpi') if !options.xxxhdpi
