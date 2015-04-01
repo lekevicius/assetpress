@@ -30,6 +30,7 @@ module.exports = (options) ->
     iosMaximumPad: 2
     iosXcassets: false
     gitMessage: false
+    workflowObject: false
     complete: -> # noop
   options = _.defaults options, defaults
   options.inputDirectory = 'source' if options.inputDirectory is true
@@ -39,9 +40,12 @@ module.exports = (options) ->
 
   options.screensDirectory = path.basename(inputDirectory, '.sketch') + ' Screens' if options.screensDirectory is true
 
-  if inputDetails.ext.toLowerCase() is '.json' and _.endsWith(inputDetails.name.toLowerCase(), '.assetpress')
-    workflowData = require inputDirectory
-    workflow workflowData, inputDetails.dir, options
+  if options.workflowObject or (inputDetails.ext.toLowerCase() is '.json' and _.endsWith(inputDetails.name.toLowerCase(), '.assetpress'))
+    if options.workflowObject
+      workflow JSON.parse(options.workflowObject), path.resolve('..'), options
+    else
+      workflowData = require inputDirectory
+      workflow workflowData, inputDetails.dir, options
   else if inputDetails.ext.toLowerCase() is '.sketch'
     workflowData = {
       source: inputDirectory
@@ -62,7 +66,6 @@ module.exports = (options) ->
       }
       process.stdout.write "Split screens to #{ screensPath }\n" if options.verbose
 
-    console.log options
     if options.noResize
       options.complete()
       return

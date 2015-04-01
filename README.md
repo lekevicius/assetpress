@@ -52,6 +52,8 @@ Usage: `assetpress [options] input`
                     Use when you only want split screens and images.
     -c, --clean     Clean output directory before outputting.
     -v, --verbose   Verbose output.
+    -m, --message   Workflow git commit message
+        --workflow  Workflow JSON object instead of file
 
 Input can be either a source directory, Sketch file or a .assetpress.json workflow file. Workflow accepts --clean and --verbose flags, all other details are read from the workflow file. Details and examples for workflow file configuration are [at the project homepage](http://lekevicius.com/projects/assetpress).
 
@@ -100,6 +102,7 @@ You can use AssetPress not only from command line, but also as a library. Exampl
         iosMinimumPad: 1,
         iosMaximumPad: 2,
         iosXcassets: false,
+        workflowObject: false,
         gitMessage: false,
         complete: function () {}
     });

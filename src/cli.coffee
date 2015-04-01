@@ -26,6 +26,8 @@ doc = """
                         Use when you only want split screens and images.
         -c, --clean     Clean output directory before outputting.
         -v, --verbose   Verbose output.
+        -m, --message   Workflow git commit message
+            --workflow  Workflow JSON object instead of file
       Input can be either a source directory or a .assetpress.json workflow file.
       For more information about Workflows and configuration files see README.
       Workflow accepts --clean and --verbose flags.
@@ -61,8 +63,6 @@ return process.stdout.write(doc) if argv.help or argv.h
 
 return process.stdout.write "AssetPress version #{ info.version }\n" if argv.version
 
-console.log argv
-
 require('./assetpress')
   inputDirectory: if argv._.length then argv._[0] else if argv.input then argv.input else undefined
   outputDirectory: argv.output or argv.o
@@ -80,4 +80,5 @@ require('./assetpress')
   iosXcassets: argv.xcassets or argv.x
   androidLdpi: argv.ldpi
   androidXxxhdpi: argv.xxxhdpi
+  workflowObject: argv.workflow
   gitMessage: argv.message or argv.m

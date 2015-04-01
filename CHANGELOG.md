@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0
+
+* Allows passing workflow as inline object
+* Fixes Rimraf bug
+
 ## 2.0
 
 * **AssetPress Workflow.** AssetPress can now read .assetpress.json files and perform actions based on configuration. See project page for documentation about config files and workflow capabilities.
