@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+
+* New command line flag --git-no-push and option gitNoPush. Will not push created git commit
+
 ## 2.1.0
 
 * Allows passing workflow as inline object

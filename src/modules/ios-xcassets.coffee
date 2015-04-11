@@ -4,382 +4,222 @@ path = require 'path'
 _ = require 'lodash'
 walk = require 'walkdir'
 
+iOSConstants = require './ios-constants'
+util = require '../utilities'
+
 outputDirectory = ''
-verbose = false
-
-appIconGroups = 
-  iOS8:
-    'AppIcon-Settings@3x~iphone.png':
-      size: 87
-    'AppIcon-Spotlight@3x~iphone.png':
-      size: 120
-    'AppIcon@3x~iphone.png':
-      size: 180
-
-  iPhone:
-    'AppIcon-Settings@2x~iphone.png':
-      size: 58
-      conflicts: [ 'AppIcon-Legacy-Small@2x~iphone.png' ]
-    'AppIcon-Spotlight@2x~iphone.png':
-      size: 80
-    'AppIcon@2x~iphone.png':
-      size: 120
-
-  iPad:
-    'AppIcon-Settings~ipad.png':
-      size: 29
-      conflicts: [ 'AppIcon-Legacy-Settings~ipad.png' ]
-    'AppIcon-Settings@2x~ipad.png':
-      size: 58
-      conflicts: [ 'AppIcon-Legacy-Settings@2x~ipad.png' ]
-    'AppIcon-Spotlight~ipad.png':
-      size: 40
-    'AppIcon-Spotlight@2x~ipad.png':
-      size: 80
-    'AppIcon~ipad.png':
-      size: 76
-    'AppIcon@2x~ipad.png':
-      size: 152
-
-  car:
-    'AppIcon~car.png':
-      size: 120
-
-  watch:
-    'AppIcon-NotificationCenter38mm@2x~watch.png':
-      size: 29
-      settingSize: '14.5'
-      role: 'notificationCenter'
-    'AppIcon-NotificationCenter42mm@2x~watch.png':
-      size: 36
-      role: 'notificationCenter'
-    'AppIcon-38mm@2x~watch.png':
-      size: 80
-      role: 'appLauncher'
-    'AppIcon-42mm@2x~watch.png':
-      size: 88
-      role: 'appLauncher'
-    'AppIcon-QuickLook38mm@2x~watch.png':
-      size: 172
-      role: 'quickLook'
-    'AppIcon-QuickLook42mm@2x~watch.png':
-      size: 196
-      role: 'quickLook'
-    'AppIcon-Settings@2x~watch.png':
-      size: 58
-      role: 'companionSettings'
-    'AppIcon-Settings@3x~watch.png':
-      size: 88
-      settingSize: '29.3'
-      role: 'companionSettings'
-
-  iPhoneLegacy:
-    'AppIcon-Legacy-Small~iphone.png':
-      size: 29
-    'AppIcon-Legacy-Small@2x~iphone.png':
-      size: 58
-    'AppIcon-Legacy~iphone.png':
-      size: 57
-    'AppIcon-Legacy@2x~iphone.png':
-      size: 114
-
-  iPadLegacy:
-    'AppIcon-Legacy-Settings~ipad.png':
-      size: 29
-    'AppIcon-Legacy-Settings@2x~ipad.png':
-      size: 58
-    'AppIcon-Legacy-Spotlight~ipad.png':
-      size: 50
-    'AppIcon-Legacy-Spotlight@2x~ipad.png':
-      size: 100
-    'AppIcon-Legacy~ipad.png':
-      size: 72
-    'AppIcon-Legacy@2x~ipad.png':
-      size: 144
-
-appIconList = []
-appIconList.push iconName for iconName of groupContents for groupName, groupContents of appIconGroups
-module.exports.appIconList = appIconList
-
-launchImageGroups = 
-  iOS8Portrait:
-    'Default-667h@2x~iphone.png':
-      minimumSystemVersion: '8.0'
-      width: 750
-      height: 1334
-    'Default-Portrait736h@3x~iphone.png':
-      minimumSystemVersion: '8.0'
-      width: 1242
-      height: 2208
-
-  iOS8Landscape: 'Default-Landscape736h@3x~iphone.png':
-    minimumSystemVersion: '8.0'
-    width: 2208
-    height: 1242
-
-  iPhonePortrait:
-    'Default@2x~iphone.png':
-      minimumSystemVersion: '7.0'
-      width: 640
-      height: 960
-    'Default-568h@2x~iphone.png':
-      minimumSystemVersion: '7.0'
-      width: 640
-      height: 1136
-
-  iPadPortrait:
-    'Default-Portrait~ipad.png':
-      minimumSystemVersion: '7.0'
-      width: 768
-      height: 1024
-    'Default-Portrait@2x~ipad.png':
-      minimumSystemVersion: '7.0'
-      width: 1536
-      height: 2048
-
-  iPadLandscape:
-    'Default-Landscape~ipad.png':
-      minimumSystemVersion: '7.0'
-      width: 1024
-      height: 768
-    'Default-Landscape@2x~ipad.png':
-      minimumSystemVersion: '7.0'
-      width: 2048
-      height: 1536
-
-  watch:
-    'Default-38mm@2x~watch.png':
-      minimumSystemVersion: '8.0'
-      width: 272
-      height: 340
-    'Default-42mm@2x~watch.png':
-      minimumSystemVersion: '8.0'
-      width: 312
-      height: 390
-
-  iPhoneLegacyPortrait:
-    'Default-Legacy~iphone.png':
-      width: 320
-      height: 480
-    'Default-Legacy@2x~iphone.png':
-      width: 640
-      height: 960
-    'Default-Legacy-568h@2x~iphone.png':
-      width: 640
-      height: 1136
-
-  iPadLegacyPortrait:
-    'Default-Legacy-Portrait~ipad.png':
-      width: 768
-      height: 1024
-    'Default-Legacy-Portrait@2x~ipad.png':
-      width: 1536
-      height: 2048
-
-  iPadLegacyLandscape:
-    'Default-Legacy-Landscape~ipad.png':
-      width: 1024
-      height: 768
-    'Default-Legacy-Landscape@2x~ipad.png':
-      width: 2048
-      height: 1536
-
-launchImageList = []
-launchImageList.push launchImageName for launchImageName of groupContents for groupName, groupContents of launchImageGroups
-module.exports.launchImageList = launchImageList
+defaults =
+  verbose: false
 
 contentsJSONForImage = (filenames, basename) ->
+  # Initial contents
   contents = 
     images: []
     info:
       version: 1
       author: 'xcode'
 
+  # Grab first filename
   firstFilename = filenames[0]
-  extension = path.extname firstFilename
+  # Because Xcode does not support both universal and device-specific resources, we can check the first file
   isDeviceSpecific = !! firstFilename.match /~([a-z]+)/
-  
+
+  extension = path.extname firstFilename
+  # For JPGs it is (was?) recommended to set 'template-rendering-intent' to 'original'
   contents.info['template-rendering-intent'] = 'original' if extension is '.jpg'
+  
+  # A very important nuance of XCAssets Contents.json is that it lists all possible icons,
+  # and some of them are simply listed without 'filename' key.
+  # So we need to construct a list of all possible names, and later check if file exists.
   possibleNames = []
 
   if isDeviceSpecific
+    # iPhone assets go icon~iphone.png, icon@2x~iphone.png, icon@3x~iphone.png
     scale = 1
     while scale <= 3
-      scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+      scaleSuffix = if scale is 1 then '' else "@#{ scale }x"
       possibleNames.push basename + scaleSuffix + '~iphone' + extension
       scale++
+    # iPad assets go icon~ipad.png, icon@2x~ipad.png
     scale = 1
     while scale <= 2
-      scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+      scaleSuffix = if scale is 1 then '' else "@#{ scale }x"
       possibleNames.push basename + scaleSuffix + '~ipad' + extension
       scale++
   else
+    # Universal assets go icon.png, icon@2x.png, icon@3x.png
     scale = 1
     while scale <= 3
-      scaleSuffix = if scale is 1 then '' else '@' + scale + 'x'
+      scaleSuffix = if scale is 1 then '' else "@#{ scale }x"
       possibleNames.push basename + scaleSuffix + extension
       scale++
 
+  # Fill contents with all the fields
   for possibleName in possibleNames
+    # idiom: iphone, ipad, universal
     idiom = possibleName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
+    # scale: 1x, 2x, 3x
     scale = possibleName.match /@(\d+)x/
     scale = if scale then scale[1] + 'x' else '1x'
     imageInfo = 
       idiom: idiom
       scale: scale
+    # filename field only added if file actually exists
     imageInfo.filename = possibleName if _.contains filenames, possibleName
+
     contents.images.push imageInfo
+
   JSON.stringify contents
 
 contentsJSONForAppIcon = (filenames, directoryName) ->
+  # Initial contents
   contents = 
     images: []
     info:
       version: 1
       author: 'xcode'
     properties: 'pre-rendered': true
-  filteredAppIconList = resourceListWithRequiredGroups filenames, appIconGroups, 'AppIcon'
+  # The difficulty with App Icons and Launch Images is that 
+  # you need to include entire group even only one icon exists in that group.
+  # This is the function of resourceListWithRequiredGroups()
+  filteredAppIconList = iOSConstants.resourceListWithRequiredGroups filenames, appIconGroups, 'AppIcon'
+
+  # There are also conflicts related to iOS 6 / iOS 7 icons.
+  # AppIcon-Settings@2x~iphone.png can be different for iOS 6 or iOS 7, and there is only one slot.
+  # If both exist, iOS 7 takes precedence, and iOS 6 icon is deleted.
   conflictSkipList = []
   for appIconName in filteredAppIconList
-    appIconInfo = getAppIconInfo appIconName
+    appIconInfo = iOSConstants.getAppIconInfo appIconName
     if appIconInfo and appIconInfo.conflicts
+      # appIconName might be AppIcon-Settings@2x~iphone.png
+      # appIconInfo.conflicts might be [ 'AppIcon-Legacy-Small@2x~iphone.png' ]
+      # merged is both in one array.
       merged = _.union [ appIconName ], appIconInfo.conflicts
-      if _.intersection(filenames, merged).length is merged.length
+      # Intersection of filenames and and merged can be 
+      # either 1 (no conflicts) or more (if there are conflicts)
+      if _.intersection(filenames, merged).length > 1
+        # If there exists at least one conflict, remove all conflicting icons
+        # from everywhere filenames, filesystem and add to special skip-list.
         filenames = _.difference filenames, appIconInfo.conflicts
         for appIconConflict in appIconInfo.conflicts
           conflictSkipList.push appIconConflict
           fs.unlinkSync outputDirectory + directoryName + '/' + appIconConflict
 
   for appIconName in filteredAppIconList
+
+    # conflictSkipList needs to be set up beforehand to skip all conflicts.
     continue if conflictSkipList.indexOf(appIconName) > -1
-    appIconInfo = getAppIconInfo appIconName
+
+    appIconInfo = iOSConstants.getAppIconInfo appIconName
+
     idiom = appIconName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
+
     scale = appIconName.match /@(\d+)x/
     scale = if scale then scale[1] else 1
-    scaleSetting = scale + 'x'
 
     if appIconInfo and appIconInfo.settingSize
+      # Some icons need to have really weird sizes set in their JSON
+      # SettingSize handles these exceptions.
       size = appIconInfo.settingSize + 'x' + appIconInfo.settingSize
     else
+      # If icon is not an exception, it's easy to calculate size.
       scaledSize = Math.round appIconInfo.size / scale
       size = scaledSize + 'x' + scaledSize
 
     imageInfo = 
       size: size
       idiom: idiom
-      scale: scaleSetting
-    subtype = getImageSubtype appIconName
-    
-    imageInfo.subtype = subtype if subtype
+      scale: scale + 'x'
+
     imageInfo.role = appIconInfo.role if appIconInfo and appIconInfo.role
+
+    subtype = iOSConstants.getImageSubtype appIconName
+    imageInfo.subtype = subtype if subtype
+
     imageInfo.filename = appIconName if _.contains filenames, appIconName
 
     contents.images.push imageInfo
+
   JSON.stringify contents
 
 contentsJSONForLaunchImage = (filenames, directoryName) ->
+  # Initial contents
   contents = 
     images: []
     info:
       version: 1
       author: 'xcode'
 
-  filteredLaunchImageList = resourceListWithRequiredGroups filenames, launchImageGroups, 'Default'
+  filteredLaunchImageList = iOSConstants.resourceListWithRequiredGroups filenames, launchImageGroups, 'Default'
+
   for launchImageName in filteredLaunchImageList
+
     idiom = launchImageName.match /~([a-z]+)/
     idiom = if idiom then idiom[1] else 'universal'
+
     scale = launchImageName.match /@(\d+)x/
     scale = if scale then scale[1] + 'x' else '1x'
+
     orientation = if /landscape/i.test(launchImageName) then 'landscape' else 'portrait'
+
     imageInfo = 
       extent: 'full-screen'
       idiom: idiom
       orientation: orientation
       scale: scale
-    launchImageInfo = getLaunchImageInfo launchImageName
-    
-    imageInfo['minimum-system-version'] = launchImageInfo.minimumSystemVersion if launchImageInfo and launchImageInfo.minimumSystemVersion
-    subtype = getImageSubtype(launchImageName)
+
+    launchImageInfo = iOSConstants.getLaunchImageInfo launchImageName
+    if launchImageInfo and launchImageInfo.minimumSystemVersion
+      imageInfo['minimum-system-version'] = launchImageInfo.minimumSystemVersion
+
+    subtype = iOSConstants.getImageSubtype(launchImageName)
     imageInfo.subtype = subtype if subtype
+
     imageInfo.filename = launchImageName if _.contains filenames, launchImageName
+
     contents.images.push imageInfo
 
   JSON.stringify contents
 
-getAppIconInfo = (needle) ->
-  bareNeedle = bareFormat needle, 'AppIcon'
-  for groupName of appIconGroups
-    filenames = _.keys appIconGroups[groupName]
-    return appIconGroups[groupName][bareNeedle] if _.contains filenames, bareNeedle
-  false
+module.exports = (passedOutputDirectory, passedOptions, callback) ->
+  outputDirectory = util.addTrailingSlash util.resolvePath(passedOutputDirectory)
+  options = _.defaults passedOptions, defaults
 
-getLaunchImageInfo = (needle) ->
-  for groupName of launchImageGroups
-    filenames = _.keys launchImageGroups[groupName]
-    return launchImageGroups[groupName][needle] if _.contains filenames, needle
-  false
-
-getImageSubtype = (filename) ->
-  heightSubtype = filename.match /(\d+)h/
-  if heightSubtype
-    number = parseInt heightSubtype[1]
-    return 'retina4' if number is 568
-    return number + 'h'
-  watchSubtype = filename.match(/(\d+)mm/)
-  if watchSubtype
-    number = parseInt watchSubtype[1]
-    return number + 'mm'
-  false
-
-bareFormat = (name, startingWith) ->
-  nameRoot = name.split(/-|~|@/)[0]
-  nameRootSuffix = nameRoot.substr(startingWith.length) # AppIcon
-  specifier = name.substr(startingWith.length + nameRootSuffix.length)
-  barename = startingWith + specifier
-  barename
-
-module.exports.bareFormat = bareFormat
-
-resourceListWithRequiredGroups = (filenames, groupedList, startingWith) ->
-  firstFilename = filenames[0]
-  nameRoot = firstFilename.split(/-|~|@/)[0]
-  nameRootSuffix = nameRoot.substr(startingWith.length)
-
-  bareFilenames = _.map filenames, (name) -> bareFormat name, startingWith
-  requiredGroups = ( groupName for groupName of groupedList when _.intersection(bareFilenames, _.keys(groupedList[groupName])).length )
-  filteredGroups = _.pick groupedList, requiredGroups
-  result = []
-  for groupName, groupContents of filteredGroups
-    for key, value of groupContents
-        specifier = key.substr(startingWith.length)
-        keyWithReattachedSuffix = startingWith + nameRootSuffix + specifier
-        result.push keyWithReattachedSuffix
-  result
-
-module.exports.createContentsJSON = (describedDirectory, globalOptions) ->
-  outputDirectory = describedDirectory
-  verbose = globalOptions.verbose
-  paths = walk.sync outputDirectory
-  paths = _.map paths, (filepath) -> filepath.replace outputDirectory, ''
+  # Walk the output directory, getting a list of all files and directories
+  paths = _.map walk.sync(outputDirectory), (filepath) -> filepath.replace outputDirectory, ''
+  # Just the list of folders to describe
   assetDirectories = _.filter paths, (filepath) -> /\.appiconset$/.test(filepath) or /\.launchimage$/.test(filepath) or /\.imageset$/.test(filepath)
 
   for directory in assetDirectories
-    basename = directory.split('/').pop()
-    extension = path.extname basename
-    basename = basename.slice 0, extension.length * -1
-    directoryContents = _.filter paths, (filepath) -> filepath.indexOf(directory + '/') == 0
-    directoryContents = _.map directoryContents, (filepath) -> filepath.replace directory + '/', ''
-    directoryContents = _.filter directoryContents, (filename) ->
-      return false if filename.slice(0, 1) is '.'
-      return false if filename is 'Contents.json'
-      true
+    # XCAssets directories may be nested
+    # Here directory might be icons/logo.imageset
+    # Directory name here is logo.imageset
+    directoryName = directory.split('/').pop()
+    # Extension is imageset
+    extension = path.extname directoryName
+    # Finally, basename is logo
+    basename = directoryName.slice 0, extension.length * -1
+
+    # Instead of reading the filesystem again, we get files from previously-built paths
+    directoryContents = _(paths)
+    # Only files in this directory
+    .filter (filepath) -> filepath.indexOf(directory + '/') == 0
+    # Relative to it
+    .map (filepath) -> filepath.replace directory + '/', ''
+    # Don't include existing Contents.json or hidden files
+    .filter (filename) -> ( filename.slice(0, 1) isnt '.' and filename isnt 'Contents.json'  )
+    .value()
+
+    # Contents is JSON string
     contents = '{}'
-    contents = contentsJSONForAppIcon directoryContents, directory if /\.appiconset$/.test directory
-    contents = contentsJSONForLaunchImage directoryContents, directory if /\.launchimage$/.test directory
-    contents = contentsJSONForImage directoryContents, basename if /\.imageset$/.test directory
+    contents = contentsJSONForAppIcon directoryContents, directory if extension is 'appiconset'
+    contents = contentsJSONForLaunchImage directoryContents, directory if extension is 'launchimage'
+    contents = contentsJSONForImage directoryContents, basename if extension is 'imageset'
+
+    # Write it and optionally log
     fs.writeFileSync outputDirectory + directory + '/Contents.json', contents
-    process.stdout.write 'Created Contents.json for ' + directory + '\n' if verbose
+    process.stdout.write "Created Contents.json for #{ directory }\n" if options.verbose
     
-  globalOptions.complete()
+  callback()

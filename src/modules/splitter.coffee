@@ -7,44 +7,50 @@ tmp = require 'temporary'
 
 util = require '../utilities'
 
-module.exports = (options) ->
+temporaryDirectory = ''
+options = {}
 
-  defaults =
-    source: process.cwd()
-    resourcesDestination: './resources'
-    screensDestination: './screens'
-    verbose: false
-  options = _.defaults options, defaults
+defaults =
+  verbose: false
+  clean: false
 
-  sourceDirectory = util.resolvePath options.source
-  resourcesDestinationDirectory = util.resolvePath options.resourcesDestination, options.source
-  screensDestinationDirectory = util.resolvePath options.screensDestination, options.source
+module.exports = (
+  source = process.cwd(), 
+  resourcesDestination = './resources', 
+  screensDestination = './screens', 
+  passedOptions = {}, 
+  callback = false) ->
+
+  options = _.defaults passedOptions, defaults
+  unless callback then callback = -> # noop
+
+  # Making all paths absolute
+  sourceDirectory = util.resolvePath source
+  resourcesDestinationDirectory = util.resolvePath source, resourcesDestination
+  screensDestinationDirectory = util.resolvePath source, screensDestination
 
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = temporaryDirectoryObject.path
   temporaryDirectory = util.addTrailingSlash temporaryDirectory
 
   tmpResourcesDirectory = temporaryDirectory + 'resources'
-  fs.mkdirsSync tmpResourcesDirectory
   tmpScreensDirectory = temporaryDirectory + 'screens'
+  
+  fs.mkdirsSync tmpResourcesDirectory
   fs.mkdirsSync tmpScreensDirectory
 
-  files = fs.readdirSync sourceDirectory
-  for filename in files
+  for filename in fs.readdirSync sourceDirectory
+    # The magic of splitter: moves everything named starting with <NUMBER>.<NUMBER> to screens, anything else to resources
     if /^(\d+)\.(\d+)/.test(filename)
       fs.renameSync path.resolve(sourceDirectory, filename), path.resolve(tmpScreensDirectory, filename)
-      process.stdout.write "Screen " + filename + " moved.\n" if options.verbose
+      process.stdout.write "Screen #{ filename } moved.\n" if options.verbose
     else
       fs.renameSync path.resolve(sourceDirectory, filename), path.resolve(tmpResourcesDirectory, filename)
-      process.stdout.write "Image " + filename + " moved.\n" if options.verbose
+      process.stdout.write "Image #{ filename } moved.\n" if options.verbose
 
-  fs.removeSync sourceDirectory
-  fs.removeSync resourcesDestinationDirectory
-  fs.removeSync screensDestinationDirectory
-
-  fs.mkdirpSync path.resolve(resourcesDestinationDirectory, '..')
-  fs.renameSync tmpResourcesDirectory, resourcesDestinationDirectory
-  fs.mkdirpSync path.resolve(screensDestinationDirectory, '..')
-  fs.renameSync tmpScreensDirectory, screensDestinationDirectory
+  util.move tmpResourcesDirectory, resourcesDestinationDirectory, options.clean
+  util.move tmpScreensDirectory, screensDestinationDirectory, options.clean
 
   fs.removeSync temporaryDirectory
+  
+  callback()

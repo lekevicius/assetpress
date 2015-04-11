@@ -42,18 +42,19 @@ More detailed installation instructions (friendlier to a designer) are [at the p
 
 Usage: `assetpress [options] input`
 
-    -i, --ios       iOS mode. Default, flag is not necessary.
-    -a, --android   Android mode.
-        --input     Input directory. Flag not necessary, 
-                    any free argument is considered input.
-    -o, --output    Output directory. Default depends on OS mode.
-    -s, --screens   Screens directory
-        --no-resize Don't perform any image resizing. 
-                    Use when you only want split screens and images.
-    -c, --clean     Clean output directory before outputting.
-    -v, --verbose   Verbose output.
-    -m, --message   Workflow git commit message
-        --workflow  Workflow JSON object instead of file
+    -i, --ios         iOS mode. Default, flag is not necessary.
+    -a, --android     Android mode.
+        --input       Input directory. Flag not necessary, 
+                      any free argument is considered input.
+    -o, --output      Output directory. Default depends on OS mode.
+    -s, --screens     Screens directory
+        --no-resize   Don't perform any image resizing. 
+                      Use when you only want split screens and images.
+    -c, --clean       Clean output directory before outputting.
+    -v, --verbose     Verbose output.
+    -m, --message     Workflow git commit message
+        --git-no-push Don't push created git commit
+        --workflow    Workflow JSON object instead of file
 
 Input can be either a source directory, Sketch file or a .assetpress.json workflow file. Workflow accepts --clean and --verbose flags, all other details are read from the workflow file. Details and examples for workflow file configuration are [at the project homepage](http://lekevicius.com/projects/assetpress).
 
