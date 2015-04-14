@@ -25,7 +25,7 @@ defaults =
   os: 'ios'
   # Splitter Options
   screensDirectory: false
-  noResize: false
+  skipResize: false
   # Workflow Object or JSON String - uses already defined object intead of setting up one.
   workflowObject: false
   # Workflow Git
@@ -55,11 +55,18 @@ module.exports = (passedOptions, callback = false) ->
   if options.workflowObject or (inputDetails.ext.toLowerCase() is '.json' and _.endsWith(inputDetails.name.toLowerCase(), '.assetpress'))
     if options.workflowObject
       options.workflowObject = JSON.parse(options.workflowObject) if _.isString options.workflowObject
-      options.workflowObject.location = path.resolve '..'
+      if _.isArray options.workflowObject
+        singleObject.location = path.resolve '..' for singleObject in options.workflowObject
+      else options.workflowObject.location = path.resolve '..'
     else
       options.workflowObject = require inputDirectory
-      options.workflowObject.location = inputDetails.dir
-    options.workflowObject.verbose = options.verbose
+      if _.isArray options.workflowObject
+        singleObject.location = inputDetails.dir for singleObject in options.workflowObject
+      else options.workflowObject.location = inputDetails.dir
+        
+    if _.isArray options.workflowObject
+      singleObject.verbose = options.verbose for singleObject in options.workflowObject
+    else options.workflowObject.verbose = options.verbose
       
     if _.isArray options.workflowObject
       for singleObject in options.workflowObject
@@ -78,15 +85,14 @@ module.exports = (passedOptions, callback = false) ->
     workflowObject.source = inputDirectory
     
     # Form assetpress
-    commonKeys = [ 'verbose', 'os' ]
     if options.os is 'ios'
       osKeys = [ 'iosMinimum', 'iosMaximum', 'iosMinimumPhone', 'iosMaximumPhone', 'iosMinimumPad', 'iosMaximumPad', 'iosXcassets' ]
     else
       osKeys = [ 'androidLdpi', 'androidXxxhdpi' ]
-    workflowObject.assetpress = _.pick options, _.merge( commonKeys, osKeys )
+    workflowObject.assetpress = _.pick options, _.union( [ 'verbose', 'os' ], osKeys )
     
     # Form screens
-    if options.noResize then delete workflowObject.assetpress
+    if options.skipResize then delete workflowObject.assetpress
     if options.screensDirectory
       workflowObject.screens = {
         destination: util.resolvePath inputDetails.dir, options.screensDirectory
@@ -99,11 +105,11 @@ module.exports = (passedOptions, callback = false) ->
       clean: options.clean
     }
     
-    queue.push options.workflowObject
+    queue.push workflowObject
 
 
 performWorkflow = (workflowObject, callback) ->
-  
+
   # Normalize input path
   workflowObject.source = util.resolvePath workflowObject.location, workflowObject.source
   # Validate that it exists
@@ -116,17 +122,18 @@ performWorkflow = (workflowObject, callback) ->
   outputObject = {
     destination: util.resolvePath workflowObject.source, "../#{ path.basename(workflowObject.source, '.sketch') } Resources"
     suggestedDestination: true
+    clean: options.clean
   }
   if workflowObject.output
     if _.isString(workflowObject.output)
       outputObject = { 
         destination: util.resolvePath(workflowObject.location, workflowObject.output)
-        clean: false
+        clean: options.clean
       }
     else if workflowObject.output.destination and _.isString(workflowObject.output.destination)
         outputObject = workflowObject.output
         outputObject.destination = util.resolvePath(workflowObject.location, workflowObject.output.destination)
-        outputObject.clean = false unless _.has outputObject, 'clean'
+        outputObject.clean = options.clean unless _.has outputObject, 'clean'
   workflowObject.output = outputObject
 
   # Verifying that destination is not inside source. It's not a very stable configuration.
@@ -142,7 +149,7 @@ performWorkflow = (workflowObject, callback) ->
   # If it already is a directory, copy everything to temporary directory
   # TODO avoid copying, instead try to use it from current location
   if fs.lstatSync(workflowObject.source).isDirectory()
-    fs.copySync sourcePath, temporarySourceDirectory
+    fs.copySync workflowObject.source, temporarySourceDirectory
       
   # Another possible input is Sketch file
   else if path.extname(workflowObject.source).toLowerCase() is '.sketch'
@@ -165,7 +172,7 @@ performWorkflow = (workflowObject, callback) ->
     return callback()
 
   # Next (optional) step is running Splitter
-  # Normalize string or object into the structure { destination: "", clean: Bool }
+  # Normalize string or object into the structure:
   if workflowObject.screens
     screensObject = {
       source: temporarySourceDirectory
@@ -182,8 +189,8 @@ performWorkflow = (workflowObject, callback) ->
       screensObject.screensDestination = util.resolvePath workflowObject.location, workflowObject.screens.destination
       screensObject.options.clean = workflowObject.screens.clean if _.has workflowObject.screens, 'clean'
     
-    splitter screensObject
-    process.stdout.write "Split screens to #{ screensPath }.\n" if workflowObject.verbose
+    splitter screensObject.source, screensObject.resourcesDestination, screensObject.screensDestination, screensObject.options
+    process.stdout.write "Split screens to #{ screensObject.screensDestination }.\n" if workflowObject.verbose
 
   # Finally, coming to AssetPress! (optionally)
 
@@ -198,7 +205,7 @@ performWorkflow = (workflowObject, callback) ->
       workflowObject.output.destination = util.removeTrailingSlash(outputObject.destination) + '.xcassets'
 
     completeFunction = -> 
-      process.stdout.write "Completed AssetPress for #{ sourcePath }\n" if workflowObject.verbose
+      process.stdout.write "Completed AssetPress for #{ workflowObject.source }\n" if workflowObject.verbose
       completeWorkflow workflowObject, temporaryDirectory, callback
 
     # Ready to run either androidResizer or iOSResizer
@@ -219,12 +226,12 @@ performWorkflow = (workflowObject, callback) ->
           verbose: workflowObject.verbose
           clean: workflowObject.output.clean
           # iOS-specific options
-          minimum: parseInt workflowObject.assetpress.iosMinimum
-          maximum: parseInt workflowObject.assetpress.iosMaximum
-          minimumPhone: parseInt workflowObject.assetpress.iosMinimumPhone
-          maximumPhone: parseInt workflowObject.assetpress.iosMaximumPhone
-          minimumPad: parseInt workflowObject.assetpress.iosMinimumPad
-          maximumPad: parseInt workflowObject.assetpress.iosMaximumPad
+          minimum: workflowObject.assetpress.iosMinimum
+          maximum: workflowObject.assetpress.iosMaximum
+          minimumPhone: workflowObject.assetpress.iosMinimumPhone
+          maximumPhone: workflowObject.assetpress.iosMaximumPhone
+          minimumPad: workflowObject.assetpress.iosMinimumPad
+          maximumPad: workflowObject.assetpress.iosMaximumPad
           xcassets: workflowObject.assetpress.iosXcassets
         iOSResizer temporarySourceDirectory, workflowObject.output.destination, iosOptions, completeFunction
         

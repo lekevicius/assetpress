@@ -1,3 +1,5 @@
+_ = require 'lodash'
+
 # Box is not perfect, but the best resizing algorithm.
 module.exports.resizeFilter = 'Box'
 
@@ -69,31 +71,32 @@ appIconGroups =
       size: 120
 
   watch:
-    'AppIcon-NotificationCenter38mm@2x~watch.png':
-      size: 29
-      settingSize: '14.5'
+
+    'AppIcon-NotificationCenter-38mm@2x~watch.png':
+      size: 48
       role: 'notificationCenter'
-    'AppIcon-NotificationCenter42mm@2x~watch.png':
-      size: 36
+    'AppIcon-NotificationCenter-42mm@2x~watch.png':
+      size: 55
+      settingSize: '27.5'
       role: 'notificationCenter'
-    'AppIcon-38mm@2x~watch.png':
+    'AppIcon@2x~watch.png':
       size: 80
       role: 'appLauncher'
-    'AppIcon-42mm@2x~watch.png':
+      settingSubtype: '38mm'
+    'AppIcon-LongLook-42mm@2x~watch.png':
       size: 88
-      role: 'appLauncher'
-    'AppIcon-QuickLook38mm@2x~watch.png':
+      role: 'longLook'
+    'AppIcon-ShortLook-38mm@2x~watch.png':
       size: 172
       role: 'quickLook'
-    'AppIcon-QuickLook42mm@2x~watch.png':
+    'AppIcon-ShortLook-42mm@2x~watch.png':
       size: 196
       role: 'quickLook'
-    'AppIcon-Settings@2x~watch.png':
+    'AppIcon-CompanionSettings@2x~watch.png':
       size: 58
       role: 'companionSettings'
-    'AppIcon-Settings@3x~watch.png':
-      size: 88
-      settingSize: '29.3'
+    'AppIcon-CompanionSettings@3x~watch.png':
+      size: 87
       role: 'companionSettings'
 
   iPhoneLegacy:
@@ -275,6 +278,11 @@ module.exports.getLaunchImageInfo = (needle) ->
 # Different icons and launch images need different subtypes,
 # this function tries to handle them all.
 module.exports.getImageSubtype = (filename) ->
+  # Some icons are better off without subtype in their name
+  iconInfo = module.exports.getAppIconInfo filename
+  if iconInfo and iconInfo.settingSubtype
+    return iconInfo.settingSubtype
+    
   # Launch images have height subtype, for instance 667h
   heightSubtype = filename.match /(\d+)h/
   if heightSubtype
@@ -283,6 +291,7 @@ module.exports.getImageSubtype = (filename) ->
     # Xcode format is a wonderful study of legacy notations.
     return 'retina4' if number is 568
     return number + 'h'
+    
   # Watch resources have mm subtypes.
   watchSubtype = filename.match(/(\d+)mm/)
   if watchSubtype

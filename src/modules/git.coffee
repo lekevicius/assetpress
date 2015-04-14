@@ -1,4 +1,7 @@
+_ = require 'lodash'
 shell = require 'shelljs'
+
+util = require '../utilities'
 
 defaults =
   verbose: false
@@ -30,14 +33,14 @@ module.exports = (directory, message = '', passedOptions = {}, callback = false)
   shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } pull", { silent: !options.verbose })
   shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } add -A .", { silent: !options.verbose })
 
-  if options.gitPrefix.length
-    messageFlag = "-m '#{ gitPrefix }#{ if message then ': ' + message else '' }'"
+  if _.isString(options.prefix) and options.prefix.length
+    messageFlag = "-m '#{ options.prefix }#{ if message then ': ' + message else '' }'"
   else
     if message then messageFlag = "-m '#{ message }'" else messageFlag = ""
 
   shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } commit #{ messageFlag }", { silent: !options.verbose })
-  unless globalOptions.gitNoPush
-    shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } push #{ gitRemote } #{ gitBranch }", { silent: !options.verbose })
+  unless options.noPush
+    shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } push #{ options.remote } #{ options.branch }", { silent: !options.verbose })
 
   process.stdout.write "Commited to git #{ if messageFlag.length then 'with a message ' + messageFlag.substring(3) else 'witouth a message' }\n" if options.verbose
 

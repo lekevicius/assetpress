@@ -5,6 +5,7 @@ _ = require 'lodash'
 im = require('gm').subClass imageMagick: true
 async = require 'async'
 walk = require 'walkdir'
+tmp = require 'temporary'
 
 iOSXCAssets = require './ios-xcassets'
 iOSConstants = require './ios-constants'
@@ -16,38 +17,47 @@ temporaryDirectory = ''
 options = {}
 
 defaults =
-  iosMinimum: 1
-  iosMaximum: 3
-  iosMinimumPhone: 2
-  iosMaximumPhone: 3
-  iosMinimumPad: 1
-  iosMaximumPad: 2
-  iosXcassets: false
+  minimum: 1
+  maximum: 3
+  minimumPhone: 2
+  maximumPhone: 3
+  minimumPad: 1
+  maximumPad: 2
+  xcassets: false
 
 processImage = (task, callback) ->
+  
   info = task.info # Entire descriptor
   scaleKey = '' + task.scale # Lookup key
   highestScale = info.devices[task.device].highestScale
+  
+  # iOS scaling naming: nothing, @2x, @3x...
+  scaleSuffix = if task.scale is 1 then '' else "@#{ task.scale }x"
+  # Universal resources are simply icon@2x.png, device specific are icon@2x~iphone.png
+  # AssetPress accepts both icon@2x~iphone.png (correct) and icon~iphone@2x.png (incorrect)
+  deviceSuffix = if task.device is 'universal' then '' else '~' + task.device
 
   if task.scale > highestScale
     # If we were expecting 3x image, but only 2x was provided, don't upscale.
-    process.stdout.write "WARNING: Missing image #{ info.id + scaleSuffix + deviceSuffix + info.extension }\n"
+    if ( info.id.indexOf('AppIcon') isnt 0 and info.id.indexOf('Default') isnt 0 )
+      # Mr. Complainy Pants. Doesn't complain about AppIcons and Launch Images, but does complain about missing resolutions.
+      process.stdout.write "WARNING: Missing image #{ info.id + scaleSuffix + deviceSuffix + info.extension }\n"
     return callback()
 
   fs.ensureDirSync temporaryDirectory + info.foldername
 
   # Setting up image
-  highestScaleImagePath = info.devices[task.device]['' + highestScale]
-  image = im(highestScaleImagePath).out '-define', 'png:exclude-chunk=date'
+  # If file exists, it will copied, so no need to load highest scale version
+  if _.has info.devices[task.device], scaleKey
+    image = im(info.devices[task.device][scaleKey])
+  # Otherwise, it will be scaled down, so we load highest scale version
+  else
+    image = im(info.devices[task.device]['' + highestScale])
+    # Making sure ImageMagic doesn't add date chunk that creates a binary difference where there are none.
+    .out '-define', 'png:exclude-chunk=date'
 
   image.size (err, size) ->
     process.stdout.write err + '\n' if err
-
-    # iOS scaling naming: nothing, @2x, @3x...
-    scaleSuffix = if task.scale is 1 then '' else "@#{ task.scale }x"
-    # Universal resources are simply icon@2x.png, device specific are icon@2x~iphone.png
-    # AssetPress accepts both icon@2x~iphone.png (correct) and icon~iphone@2x.png (incorrect)
-    deviceSuffix = if task.device is 'universal' then '' else '~' + task.device
 
     # 1. Make sure that this resource is correct and needed.
 
@@ -65,8 +75,8 @@ processImage = (task, callback) ->
       )
         # If we only found iPhone-specific image, modify variables accordingly
         if (
-          !_.contains iOSConstants.appIconList, iOSConstants.bareFormat(outputPath, 'AppIcon') and
-          _.contains iOSConstants.appIconList, iOSConstants.bareFormat(iPhoneOutputPath, 'AppIcon')
+          !_.contains(iOSConstants.appIconList, iOSConstants.bareFormat(outputPath, 'AppIcon')) and
+          _.contains(iOSConstants.appIconList, iOSConstants.bareFormat(iPhoneOutputPath, 'AppIcon'))
         )
           task.device = 'iphone'
           deviceSuffix = '~iphone'
@@ -89,7 +99,7 @@ processImage = (task, callback) ->
         _.contains(iOSConstants.launchImageList, iPhoneOutputPath)
       )
         if (
-          _.contains(iOSConstants.launchImageList, outputPath) or
+          !_.contains(iOSConstants.launchImageList, outputPath) and
           _.contains(iOSConstants.launchImageList, iPhoneOutputPath)
         )
           task.device = 'iphone'
@@ -127,15 +137,30 @@ processImage = (task, callback) ->
 
     # If the file already exists, we need to copy it.
     if _.has info.devices[task.device], scaleKey
-      fs.copy info.devices[task.device][scaleKey], destinationPath, ->
-        process.stdout.write "Copied prerendered image #{ info.id + scaleSuffix + deviceSuffix + info.extension }\n" if options.verbose
-        return callback()
+      if info.id.indexOf('AppIcon') is 0
+        # For App Icons we always remove alpha channel.
+        # It is a requirement by Apple.
+        image
+        .out '-background', 'white'
+        .out '-alpha', 'remove'
+        .out '-define', 'png:exclude-chunk=date'
+        .write destinationPath, (err) ->
+          process.stdout.write err + '\n' if err
+          process.stdout.write "Copied prerendered App Icon #{ info.id + scaleSuffix + deviceSuffix + info.extension } and removed alpha channel.\n" if options.verbose
+          return callback()
+      else
+        fs.copy info.devices[task.device][scaleKey], destinationPath, ->
+          process.stdout.write "Copied prerendered image #{ info.id + scaleSuffix + deviceSuffix + info.extension }\n" if options.verbose
+          return callback()
     # Otherwise, scale down the highest scale image
     else
       scaleRatio = task.scale / highestScale
       image
-      .filter resizeFilter
+      .filter iOSConstants.resizeFilter
       .resize Math.round(size.width * scaleRatio), Math.round(size.height * scaleRatio), '!'
+      .out '-background', 'white'
+      .out '-alpha', 'remove'
+      .out '-define', 'png:exclude-chunk=date'
       .write destinationPath, (err) ->
         process.stdout.write err + '\n' if err
         process.stdout.write "Scaled image #{ info.id + scaleSuffix + deviceSuffix + info.extension }\n" if options.verbose
@@ -212,13 +237,15 @@ describeInputDirectory = (inputDirectory) ->
       highestScale = _.max _.keys(groupPaths), (key) -> parseInt key
       descriptor.devices[device].highestScale = parseInt highestScale
 
-    # TODO What does this do exactly?
-    delete descriptor.devices.universal if (
+    # In Xcassets folder both device-specific and universal resources are not allowed,
+    # If descriptor.devices has both, univeral is removed.
+    if (
       options.xcassets and 
       ( _.has(descriptor.devices, 'iphone') or _.has(descriptor.devices, 'ipad') ) and 
       _.has(descriptor.devices, 'universal') and
       !( identifier.indexOf('AppIcon') == 0 or identifier.indexOf('Default') == 0 )
     )
+      delete descriptor.devices.universal
 
     imageDescriptors.push descriptor
   imageDescriptors
@@ -229,9 +256,17 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
   outputDirectory = passedOutputDirectory
   options = _.defaults passedOptions, defaults
   unless callback then callback = -> # noop
+  
+  # Numberify options
+  options.minimum = parseInt options.minimum
+  options.maximum = parseInt options.maximum
+  options.minimumPhone = parseInt options.minimumPhone
+  options.maximumPhone = parseInt options.maximumPhone
+  options.minimumPad = parseInt options.minimumPad
+  options.maximumPad = parseInt options.maximumPad
 
-  outputDirectoryName = util.removeTrailingSlash( outputDirectory or 'Images' )
-  outputDirectoryName += '.xcassets' if options.xcassets
+  outputDirectoryName = if passedOutputDirectory then util.removeTrailingSlash(passedOutputDirectory) else 'Images' 
+  outputDirectoryName += '.xcassets' if options.xcassets and !_.endsWith(outputDirectoryName, '.xcassets')
 
   outputDirectoryBase = util.resolvePath inputDirectory, '..'
   outputDirectory = util.addTrailingSlash util.resolvePath(outputDirectoryBase, outputDirectoryName)
@@ -239,7 +274,7 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
   temporaryDirectoryObject = new tmp.Dir
   temporaryDirectory = util.addTrailingSlash temporaryDirectoryObject.path
 
-  queue = async.queue processImage, 4
+  queue = async.queue processImage, 1
   queue.drain = -> 
     # These are the final actions: moving results from temporary folder to final output
     util.move temporaryDirectory, outputDirectory, options.clean
@@ -247,12 +282,15 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
     fs.removeSync temporaryDirectory
     # We either end here or continue with XCAssets JSONs
     if options.xcassets
-      iOSXCAssets.createContentsJSON outputDirectory, { verbose: options.verbose }, callback
+      iOSXCAssets outputDirectory, { verbose: options.verbose }, callback
     else
       callback()
 
   # Image descriptors is the master data, that describes all image groups
   imageDescriptors = describeInputDirectory inputDirectory
+  
+  # Very useful debug line
+  # console.log require('util').inspect(imageDescriptors, false, null)
 
   for device in iOSConstants.deviceTypes
     # min and max densities make sure that all needed scales are created.
@@ -265,7 +303,7 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
         # Here we deal with certain exceptions
         adjustedMinDensity = minDensity
         adjustedMaxDensity = maxDensity
-        if _.has scalerExceptions, descriptor.id
+        if _.has iOSConstants.scalerExceptions, descriptor.id
           adjustments = iOSConstants.scalerExceptions[descriptor.id]
           adjustedMinDensity = adjustments.minDensity if adjustments.minDensity
           adjustedMaxDensity = adjustments.maxDensity if adjustments.maxDensity

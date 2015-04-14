@@ -1,4 +1,5 @@
-`#!/usr/bin/env node`
+`#!/usr/bin/env node
+`
 
 fs = require 'fs-extra'
 path = require 'path'
@@ -77,7 +78,7 @@ require('./assetpress')
   os: if (argv.ios or argv.i) then 'ios' else if (argv.android or argv.a) then 'android' else undefined
 
   screensDirectory: if _.isString(argv.screens or argv.s) then (argv.screens or argv.s) else undefined
-  noResize: !argv.resize
+  skipResize: argv['skip-resize']
 
   iosMinimum: argv['ios-min']
   iosMaximum: argv['ios-max']

@@ -10,8 +10,8 @@ androidConstants = require './android-constants'
 util = require '../utilities'
 
 defaults =
-  androidLdpi: false
-  androidXxxhdpi: false
+  ldpi: false
+  xxxhdpi: false
 
 inputDirectory = ''
 outputDirectory = ''
@@ -138,7 +138,7 @@ process9PatchImage = (file, callback) ->
         # And 4 patches.
         _composite.draw [ "image Over 1,0 0,0 \'#{ file.topPatchPath }\'" ]
         _composite.draw [ "image Over 0,1 0,0 \'#{ file.leftPatchPath }\'" ]
-        _composite.draw [ "image Over #{ file.patchContentWidth + 1 },1 0,0 \'#{ file.rightPatchPath }}\'" ]
+        _composite.draw [ "image Over #{ file.patchContentWidth + 1 },1 0,0 \'#{ file.rightPatchPath }\'" ]
         _composite.draw [ "image Over 1,#{ file.patchContentHeight + 1 } 0,0 \'#{ file.bottomPatchPath }\'" ]
         # Saving to temporary results folder
         _composite.write fileDestination, (error) ->
@@ -159,18 +159,18 @@ processStandardImage = (file, callback) ->
   .out '-define', 'png:exclude-chunk=date'
   .filter androidConstants.resizeFilter
   .resize Math.round(file.width * file.scaleFactor), Math.round(file.height * file.scaleFactor), '!'
-  .write to, (error) ->
+  .write fileDestination, (error) ->
     process.stdout.write error if error
     process.stdout.write "Saved  #{ file.basename } in #{ file.density } density.\n" if options.verbose
     callback()
 
 processNoDpiImage = (file, callback) ->
   # NoDPIs are rare enough to not create no-dpi folder initially.
-  fs.ensureDirSync outputDirectory + 'drawable-nodpi'
+  fs.ensureDirSync temporaryDirectory + 'drawable-nodpi'
   # AssetPress uses notation similar to 9-patches for NoDPI images: graphic.nodpi.png
   cleanBasename = file.basename.replace '.nodpi', ''
   # No resize needed (by definition)
-  fs.copy file.filepath, outputDirectory + 'drawable-nodpi/' + cleanBasename, ->
+  fs.copy file.filepath, temporaryDirectory + 'drawable-nodpi/' + cleanBasename, ->
     process.stdout.write "Saved nodpi image #{ file.basename }\n" if options.verbose
     callback()
 
@@ -181,7 +181,7 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
   options = _.defaults passedOptions, defaults
   unless callback then callback = -> # noop
 
-  outputDirectoryName = util.removeTrailingSlash( outputDirectory or 'res' )
+  outputDirectoryName = if passedOutputDirectory then util.removeTrailingSlash(passedOutputDirectory) else 'res'
 
   outputDirectoryBase = util.resolvePath inputDirectory, '..'
   outputDirectory = util.addTrailingSlash util.resolvePath(outputDirectoryBase, outputDirectoryName)
@@ -202,8 +202,10 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
   queue = async.queue processImage, 2
   queue.drain = ->
     # These are the final actions: moving results from temporary folder to final output
-    util.move temporaryDirectory, outputDirectory, options.clean
+    for density in produceDensities
+      util.move path.resolve(temporaryDirectory, "drawable-#{ density }"), path.resolve(outputDirectory, "drawable-#{ density }"), options.clean
     # And removing temporary folder.
+    fs.removeSync temporaryPartsDirectory
     fs.removeSync temporaryDirectory
     callback()
 
@@ -213,7 +215,7 @@ module.exports = (passedInputDirectory, passedOutputDirectory = false, passedOpt
     continue if file.slice(0, 1) is '.' or file.slice(0, 1) is '_'
 
     # Skip folders and warn
-    unless fs.lstatSync(path_string).isFile()
+    unless fs.lstatSync( path.resolve(inputDirectory, file) ).isFile()
       process.stdout.write "Android does not support nested resources. Skipping #{ file }.\n" # if options.verbose
       continue
 

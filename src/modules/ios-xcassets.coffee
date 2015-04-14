@@ -3,6 +3,7 @@ path = require 'path'
 
 _ = require 'lodash'
 walk = require 'walkdir'
+pngparse = require 'pngparse'
 
 iOSConstants = require './ios-constants'
 util = require '../utilities'
@@ -10,8 +11,66 @@ util = require '../utilities'
 outputDirectory = ''
 defaults =
   verbose: false
+  
+supportedModifiers = [ 'template', '9' ]
 
-contentsJSONForImage = (filenames, basename) ->
+hasAnyModifier = (basename) ->
+  return modifier for modifier in supportedModifiers when _.endsWith(basename, ".#{ modifier }")
+  false
+
+stringRemoveModifier = (string, modifier) -> string.replace ".#{ modifier }", ''
+
+removeModifier = (modifier, filenames, directory, contents, basename) ->
+  # Renaming files and directory itself
+  directoryPath = path.resolve outputDirectory, directory
+  for file in fs.readdirSync directoryPath
+    # Do not rename Contents.json
+    continue unless file.indexOf(".#{ modifier }") > 0
+    fs.renameSync path.resolve(directoryPath, file), path.resolve(directoryPath, stringRemoveModifier(file, modifier))
+  fs.renameSync directoryPath, stringRemoveModifier(directoryPath, modifier)
+  # Updating variables
+  filenames = _.map filenames, (filename) -> stringRemoveModifier filename, modifier
+  directory = stringRemoveModifier directory, modifier
+  basename = stringRemoveModifier basename, modifier
+  return [ filenames, directory, contents, basename ]
+
+runTemplateModifier = (filenames, directory, contents, basename, callback) ->
+  contents.info['template-rendering-intent'] = 'template'
+  completedModifierAction 'template', filenames, directory, contents, basename, callback
+  
+run9PatchModifier = (filenames, directory, contents, basename, callback) ->
+  ###
+  Tasks:
+  - Read png and parse it into meaningful numbers
+  - Add those numbers to contents
+  - Uncrop all images
+  ###
+  scaledPatchInfo = filenames[0].match /@(\d+)x/i
+  imageScale = if scaledPatchInfo then parseInt(scaledPatchInfo[1]) else 1
+  imagePath = path.resolve(outputDirectory, directory, filenames[0])
+  console.log imagePath, imageScale
+  
+  pngparse.parseFile imagePath, (err, data) ->
+    process.stdout.write err if err
+    console.log data
+    console.log "NINE-PATCH", basename
+    completedModifierAction '9', filenames, directory, contents, basename, callback
+  
+completedModifierAction = (modifier, filenames, directory, contents, basename, callback) ->
+  [ filenames, directory, contents, basename ] = removeModifier modifier, filenames, directory, contents, basename
+  if hasAnyModifier basename
+    runModifierActions filenames, directory, contents, basename, callback
+  else 
+    completeContentsJSONForImage filenames, directory, contents, basename, callback
+
+runModifierActions = (filenames, directory, contents, basename, callback) ->
+  modifier = hasAnyModifier basename
+  if modifier is 'template'
+    runTemplateModifier filenames, directory, contents, basename, callback
+  if modifier is '9'
+    run9PatchModifier filenames, directory, contents, basename, callback
+
+contentsJSONForImage = (filenames, directory, callback) ->
   # Initial contents
   contents = 
     images: []
@@ -19,6 +78,18 @@ contentsJSONForImage = (filenames, basename) ->
       version: 1
       author: 'xcode'
 
+  # Directory name here is logo.imageset
+  directoryName = directory.split('/').pop()
+  # Basename is logo
+  basename = directoryName.slice 0, path.extname(directoryName).length * -1
+  
+  if hasAnyModifier basename
+    runModifierActions filenames, directory, contents, basename, callback
+  else 
+    completeContentsJSONForImage filenames, directory, contents, basename, callback
+  
+completeContentsJSONForImage = (filenames, directory, contents, basename, callback) ->
+  
   # Grab first filename
   firstFilename = filenames[0]
   # Because Xcode does not support both universal and device-specific resources, we can check the first file
@@ -70,9 +141,9 @@ contentsJSONForImage = (filenames, basename) ->
 
     contents.images.push imageInfo
 
-  JSON.stringify contents
+  callback(null, contents, directory)
 
-contentsJSONForAppIcon = (filenames, directoryName) ->
+contentsJSONForAppIcon = (filenames, directory) ->
   # Initial contents
   contents = 
     images: []
@@ -83,7 +154,7 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
   # The difficulty with App Icons and Launch Images is that 
   # you need to include entire group even only one icon exists in that group.
   # This is the function of resourceListWithRequiredGroups()
-  filteredAppIconList = iOSConstants.resourceListWithRequiredGroups filenames, appIconGroups, 'AppIcon'
+  filteredAppIconList = iOSConstants.resourceListWithRequiredGroups filenames, iOSConstants.appIconGroups, 'AppIcon'
 
   # There are also conflicts related to iOS 6 / iOS 7 icons.
   # AppIcon-Settings@2x~iphone.png can be different for iOS 6 or iOS 7, and there is only one slot.
@@ -104,7 +175,7 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
         filenames = _.difference filenames, appIconInfo.conflicts
         for appIconConflict in appIconInfo.conflicts
           conflictSkipList.push appIconConflict
-          fs.unlinkSync outputDirectory + directoryName + '/' + appIconConflict
+          fs.unlinkSync outputDirectory + directory + '/' + appIconConflict
 
   for appIconName in filteredAppIconList
 
@@ -142,9 +213,9 @@ contentsJSONForAppIcon = (filenames, directoryName) ->
 
     contents.images.push imageInfo
 
-  JSON.stringify contents
+  contents
 
-contentsJSONForLaunchImage = (filenames, directoryName) ->
+contentsJSONForLaunchImage = (filenames, directory) ->
   # Initial contents
   contents = 
     images: []
@@ -152,7 +223,7 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
       version: 1
       author: 'xcode'
 
-  filteredLaunchImageList = iOSConstants.resourceListWithRequiredGroups filenames, launchImageGroups, 'Default'
+  filteredLaunchImageList = iOSConstants.resourceListWithRequiredGroups filenames, iOSConstants.launchImageGroups, 'Default'
 
   for launchImageName in filteredLaunchImageList
 
@@ -181,7 +252,7 @@ contentsJSONForLaunchImage = (filenames, directoryName) ->
 
     contents.images.push imageInfo
 
-  JSON.stringify contents
+  contents
 
 module.exports = (passedOutputDirectory, passedOptions, callback) ->
   outputDirectory = util.addTrailingSlash util.resolvePath(passedOutputDirectory)
@@ -194,13 +265,8 @@ module.exports = (passedOutputDirectory, passedOptions, callback) ->
 
   for directory in assetDirectories
     # XCAssets directories may be nested
-    # Here directory might be icons/logo.imageset
-    # Directory name here is logo.imageset
-    directoryName = directory.split('/').pop()
-    # Extension is imageset
-    extension = path.extname directoryName
-    # Finally, basename is logo
-    basename = directoryName.slice 0, extension.length * -1
+    # Extension is .imageset
+    extension = path.extname directory
 
     # Instead of reading the filesystem again, we get files from previously-built paths
     directoryContents = _(paths)
@@ -214,12 +280,21 @@ module.exports = (passedOutputDirectory, passedOptions, callback) ->
 
     # Contents is JSON string
     contents = '{}'
-    contents = contentsJSONForAppIcon directoryContents, directory if extension is 'appiconset'
-    contents = contentsJSONForLaunchImage directoryContents, directory if extension is 'launchimage'
-    contents = contentsJSONForImage directoryContents, basename if extension is 'imageset'
+    # Sync solutions
+    contents = contentsJSONForAppIcon directoryContents, directory if extension is '.appiconset'
+    contents = contentsJSONForLaunchImage directoryContents, directory if extension is '.launchimage'
+    if extension is '.appiconset' or extension is '.launchimage'
+      # Write it and optionally log
+      fs.writeFileSync path.join(outputDirectory, directory, 'Contents.json'), JSON.stringify(contents)
+      process.stdout.write "Created Contents.json for #{ directory }\n" if options.verbose
+    # Async
+    if extension is '.imageset'
+      contentsJSONForImage directoryContents, directory, (err, resultingContents, resultingDirectory) ->
+        process.stdout.write "Error!\n" if err
+        # Write it and optionally log
+        fs.writeFileSync path.join(outputDirectory, resultingDirectory, 'Contents.json'), JSON.stringify(resultingContents)
+        process.stdout.write "Created Contents.json for #{ resultingDirectory }\n" if options.verbose
 
-    # Write it and optionally log
-    fs.writeFileSync outputDirectory + directory + '/Contents.json', contents
-    process.stdout.write "Created Contents.json for #{ directory }\n" if options.verbose
+
     
   callback()

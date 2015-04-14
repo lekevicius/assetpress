@@ -45,6 +45,7 @@
     "gm": "^1.17.0",
     "lodash": "^3.2.0",
     "minimist": "^1.1.0",
+    "pngparse": "^2.0.1",
     "shelljs": "^0.4.0",
     "temporary": "0.0.8",
     "walkdir": "0.0.7"
