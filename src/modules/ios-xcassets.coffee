@@ -4,11 +4,15 @@ path = require 'path'
 _ = require 'lodash'
 walk = require 'walkdir'
 pngparse = require 'pngparse'
+im = require('gm').subClass imageMagick: true
 
 iOSConstants = require './ios-constants'
 util = require '../utilities'
 
+AUTHOR = "assetpress"
+
 outputDirectory = ''
+options = {}
 defaults =
   verbose: false
   
@@ -19,6 +23,11 @@ hasAnyModifier = (basename) ->
   false
 
 stringRemoveModifier = (string, modifier) -> string.replace ".#{ modifier }", ''
+
+stringWithoutModifiers = (string) ->
+  for modifier in supportedModifiers
+    string = string.replace ".#{ modifier }", ''
+  string
 
 removeModifier = (modifier, filenames, directory, contents, basename) ->
   # Renaming files and directory itself
@@ -38,23 +47,129 @@ runTemplateModifier = (filenames, directory, contents, basename, callback) ->
   contents.info['template-rendering-intent'] = 'template'
   completedModifierAction 'template', filenames, directory, contents, basename, callback
   
+remove9Patches = (filesToCrop, filenames, directory, contents, basename, callback) ->
+  if filesToCrop.length
+    fileToCrop = filesToCrop.pop()
+    scaledPatchInfo = fileToCrop.match /@(\d+)x/i
+    imageScale = if scaledPatchInfo then parseInt(scaledPatchInfo[1]) else 1
+    imagePath = path.resolve outputDirectory, directory, fileToCrop
+    
+    cropImage = im(imagePath)
+    cropImage.size (err, size) ->
+      cropImage
+      .crop (size.width - 2 * imageScale), (size.height - 2 * imageScale), imageScale, imageScale
+      .out '-define', 'png:exclude-chunk=date'
+      .write imagePath, (err) ->
+        process.stdout.write err + '\n' if err
+        process.stdout.write "Cropped 9-patch image #{ imagePath }\n" if options.verbose
+        remove9Patches filesToCrop, filenames, directory, contents, basename, callback
+  else
+    completedModifierAction '9', filenames, directory, contents, basename, callback
+
+readPixelRow = (data, row, scale) ->
+  alphas = []
+  switch row
+    when 'top'
+      y = 0
+      for x in [scale..(data.width - 1 - scale)] by scale
+        offset = (y * data.width + x) * 4
+        alphas.push data.data[ offset + 3 ]
+    when 'left'
+      x = 0
+      for y in [scale..(data.height - 1 - scale)] by scale
+        offset = (y * data.width + x) * 4
+        alphas.push data.data[ offset + 3 ]
+  
+  groups = []
+  currentGroup = [ 0, ( alphas[0] > 128 ) ]
+  for alpha in alphas
+    if ( alpha > 128 ) isnt currentGroup[1]
+      groups.push _.clone(currentGroup)
+      currentGroup = [ 0, ( alpha > 128 ) ]
+    currentGroup[0] += 1
+  groups.push _.clone(currentGroup)
+  
+  result = { startInset: 0, center: 0, endInset: 0 }
+  # Patch with both insets off-on-off
+  if groups.length is 3 and groups[0][1] is false and groups[1][1] is true and groups[2][1] is false
+    result.startInset = groups[0][0]
+    result.center = groups[1][0]
+    result.endInset = groups[2][0]
+  # Either off-on or on-off, one inset
+  else if groups.length is 2
+    if groups[0][1] is false and groups[1][1] is true
+      result.startInset = groups[0][0]
+      result.center = groups[1][0]
+    else if groups[0][1] is true and groups[1][1] is false
+      result.center = groups[0][0]
+      result.endInset = groups[1][0]
+    else return false
+  # Everything on
+  else if groups.length is 1 and groups[0][1] is true
+    result.center = groups[0][0]
+  # False return means either incorrectly drawn patch or empty patch, which implies no tiling
+  else return false
+  return result
+      
+getResizingObject = (data, scale) ->
+  topRowInfo = readPixelRow data, 'top', scale
+  leftRowInfo = readPixelRow data, 'left', scale
+  
+  if topRowInfo or leftRowInfo
+    resizing = {
+      mode: '',
+      center: {
+        mode: 'fill'
+      },
+      capInsets: {}
+    }
+    
+    if topRowInfo and leftRowInfo
+      resizing.mode = '9-part'
+    else if topRowInfo
+      resizing.mode = '3-part-horizontal'
+    else
+      resizing.mode = '3-part-vertical'
+    
+    if topRowInfo
+      resizing.center.width = topRowInfo.center
+      resizing.capInsets.left = topRowInfo.startInset
+      resizing.capInsets.right = topRowInfo.endInset
+    if leftRowInfo
+      resizing.center.height = leftRowInfo.center
+      resizing.capInsets.top = leftRowInfo.startInset
+      resizing.capInsets.bottom = leftRowInfo.endInset
+    
+    return resizing
+  else return false
+
 run9PatchModifier = (filenames, directory, contents, basename, callback) ->
-  ###
-  Tasks:
-  - Read png and parse it into meaningful numbers
-  - Add those numbers to contents
-  - Uncrop all images
-  ###
   scaledPatchInfo = filenames[0].match /@(\d+)x/i
   imageScale = if scaledPatchInfo then parseInt(scaledPatchInfo[1]) else 1
   imagePath = path.resolve(outputDirectory, directory, filenames[0])
-  console.log imagePath, imageScale
   
   pngparse.parseFile imagePath, (err, data) ->
     process.stdout.write err if err
-    console.log data
-    console.log "NINE-PATCH", basename
-    completedModifierAction '9', filenames, directory, contents, basename, callback
+    resizingObject = getResizingObject data, imageScale
+    contents['__additions'] = {}
+    # FIXME: handle multiple additions (not relevant with current Xcode features)
+    for filename in filenames
+      filename = stringWithoutModifiers filename
+      scaledPatchInfo = filename.match /@(\d+)x/i
+      imageScale = if scaledPatchInfo then parseInt(scaledPatchInfo[1]) else 1
+      
+      scaledResizingObject = _.cloneDeep resizingObject
+      scaledResizingObject.center.width *= imageScale if scaledResizingObject.center.width
+      scaledResizingObject.center.height *= imageScale if scaledResizingObject.center.height
+      scaledResizingObject.capInsets.top *= imageScale if scaledResizingObject.capInsets.top
+      scaledResizingObject.capInsets.right *= imageScale if scaledResizingObject.capInsets.right
+      scaledResizingObject.capInsets.bottom *= imageScale if scaledResizingObject.capInsets.bottom
+      scaledResizingObject.capInsets.left *= imageScale if scaledResizingObject.capInsets.left
+      
+      contents['__additions'][filename] = { resizing: scaledResizingObject }
+      
+    filesToCrop = _.clone filenames
+    remove9Patches filesToCrop, filenames, directory, contents, basename, callback
   
 completedModifierAction = (modifier, filenames, directory, contents, basename, callback) ->
   [ filenames, directory, contents, basename ] = removeModifier modifier, filenames, directory, contents, basename
@@ -76,7 +191,7 @@ contentsJSONForImage = (filenames, directory, callback) ->
     images: []
     info:
       version: 1
-      author: 'xcode'
+      author: AUTHOR
 
   # Directory name here is logo.imageset
   directoryName = directory.split('/').pop()
@@ -89,7 +204,6 @@ contentsJSONForImage = (filenames, directory, callback) ->
     completeContentsJSONForImage filenames, directory, contents, basename, callback
   
 completeContentsJSONForImage = (filenames, directory, contents, basename, callback) ->
-  
   # Grab first filename
   firstFilename = filenames[0]
   # Because Xcode does not support both universal and device-specific resources, we can check the first file
@@ -138,9 +252,13 @@ completeContentsJSONForImage = (filenames, directory, contents, basename, callba
       scale: scale
     # filename field only added if file actually exists
     imageInfo.filename = possibleName if _.contains filenames, possibleName
+    # additional details added
+    if _.has contents['__additions'], possibleName
+      imageInfo = _.assign imageInfo, contents['__additions'][possibleName]
 
     contents.images.push imageInfo
 
+  delete contents['__additions']
   callback(null, contents, directory)
 
 contentsJSONForAppIcon = (filenames, directory) ->
@@ -149,7 +267,7 @@ contentsJSONForAppIcon = (filenames, directory) ->
     images: []
     info:
       version: 1
-      author: 'xcode'
+      author: AUTHOR
     properties: 'pre-rendered': true
   # The difficulty with App Icons and Launch Images is that 
   # you need to include entire group even only one icon exists in that group.
@@ -221,7 +339,7 @@ contentsJSONForLaunchImage = (filenames, directory) ->
     images: []
     info:
       version: 1
-      author: 'xcode'
+      author: AUTHOR
 
   filteredLaunchImageList = iOSConstants.resourceListWithRequiredGroups filenames, iOSConstants.launchImageGroups, 'Default'
 

@@ -1,3 +1,5 @@
+childProcess = require 'child_process'
+
 _ = require 'lodash'
 shell = require 'shelljs'
 
@@ -28,19 +30,24 @@ module.exports = (directory, message = '', passedOptions = {}, callback = false)
   gitDir = util.escapeShell gitWorkTree + '.git'
   
   if options.branch
-    shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } checkout #{ options.branch }", { silent: !options.verbose })
+    out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } checkout #{ options.branch }"
+    console.log(out) if options.verbose
 
-  shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } pull", { silent: !options.verbose })
-  shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } add -A .", { silent: !options.verbose })
+  out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } pull"
+  console.log(out) if options.verbose
+  out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } add -A ."
+  console.log(out) if options.verbose
 
   if _.isString(options.prefix) and options.prefix.length
     messageFlag = "-m '#{ options.prefix }#{ if message then ': ' + message else '' }'"
   else
     if message then messageFlag = "-m '#{ message }'" else messageFlag = ""
 
-  shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } commit #{ messageFlag }", { silent: !options.verbose })
+  out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } commit #{ messageFlag }"
+  console.log(out) if options.verbose
   unless options.noPush
-    shell.exec("git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } push #{ options.remote } #{ options.branch }", { silent: !options.verbose })
+    out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } push #{ options.remote } #{ options.branch }"
+    console.log(out) if options.verbose
 
   process.stdout.write "Commited to git #{ if messageFlag.length then 'with a message ' + messageFlag.substring(3) else 'witouth a message' }\n" if options.verbose
 

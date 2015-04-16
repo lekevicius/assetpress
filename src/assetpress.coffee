@@ -134,6 +134,8 @@ performWorkflow = (workflowObject, callback) ->
         outputObject = workflowObject.output
         outputObject.destination = util.resolvePath(workflowObject.location, workflowObject.output.destination)
         outputObject.clean = options.clean unless _.has outputObject, 'clean'
+        
+  outputObject.gitMessage = options.gitMessage if options.gitMessage
   workflowObject.output = outputObject
 
   # Verifying that destination is not inside source. It's not a very stable configuration.
@@ -254,7 +256,7 @@ completeWorkflow = (workflowObject, temporaryDirectory, callback) ->
   # By now everything is done, all assetpress assets are moved into output
   # Remaining steps: do git commit, remove temporary folder, and be done
   fs.removeSync temporaryDirectory
-  
+
   if workflowObject.output.gitRoot
     gitOptions = {
       verbose: workflowObject.verbose

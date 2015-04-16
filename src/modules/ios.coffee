@@ -158,8 +158,6 @@ processImage = (task, callback) ->
       image
       .filter iOSConstants.resizeFilter
       .resize Math.round(size.width * scaleRatio), Math.round(size.height * scaleRatio), '!'
-      .out '-background', 'white'
-      .out '-alpha', 'remove'
       .out '-define', 'png:exclude-chunk=date'
       .write destinationPath, (err) ->
         process.stdout.write err + '\n' if err
