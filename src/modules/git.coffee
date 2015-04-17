@@ -5,6 +5,7 @@ shell = require 'shelljs'
 
 util = require '../utilities'
 
+options = 
 defaults =
   verbose: false
   branch: ''
@@ -18,37 +19,44 @@ module.exports = (directory, message = '', passedOptions = {}, callback = false)
   unless callback then callback = -> # noop
 
   unless directory
-    process.stdout.write "ERROR: git root directory is required.\n"
+    console.log "ERROR: git root directory is required."
     return callback()
     
   unless shell.which('git')
-    process.stdout.write "ERROR: git is not installed.\n"
+    console.log "ERROR: git is not installed."
     return callback()
     
   gitRootPath = util.resolvePath directory
   gitWorkTree = util.escapeShell util.addTrailingSlash(gitRootPath)
   gitDir = util.escapeShell gitWorkTree + '.git'
+  shell.cd gitRootPath
   
   if options.branch
-    out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } checkout #{ options.branch }"
-    console.log(out) if options.verbose
-
-  out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } pull"
-  console.log(out) if options.verbose
-  out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } add -A ."
-  console.log(out) if options.verbose
-
-  if _.isString(options.prefix) and options.prefix.length
-    messageFlag = "-m '#{ options.prefix }#{ if message then ': ' + message else '' }'"
+    shell.exec "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } checkout #{ options.branch }", { silent: !options.verbose }, (code, output) ->
+      commitInsideBranch gitDir, gitWorkTree, message, callback
   else
-    if message then messageFlag = "-m '#{ message }'" else messageFlag = ""
+    commitInsideBranch gitDir, gitWorkTree, message, callback
 
-  out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } commit #{ messageFlag }"
-  console.log(out) if options.verbose
-  unless options.noPush
-    out = childProcess.spawnSync "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } push #{ options.remote } #{ options.branch }"
-    console.log(out) if options.verbose
+commitInsideBranch = (gitDir, gitWorkTree, message, callback) ->
 
-  process.stdout.write "Commited to git #{ if messageFlag.length then 'with a message ' + messageFlag.substring(3) else 'witouth a message' }\n" if options.verbose
+  shell.exec "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } pull", { silent: !options.verbose }, (code, output) ->
 
-  callback()
+    shell.exec "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } add -A .", { silent: !options.verbose }, (code, output) ->
+
+      if _.isString(options.prefix) and options.prefix.length
+        messageFlag = "-m '#{ options.prefix }#{ if message then ': ' + message else '' }'"
+      else
+        if message then messageFlag = "-m '#{ message }'" else messageFlag = ""
+
+      shellOutput = shell.exec "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } commit #{ messageFlag }", { silent: !options.verbose }, (code, output) ->
+        
+        logMessage = "Commited to git #{ if messageFlag.length then 'with a message ' + messageFlag.substring(3) else 'witouth a message' }"
+        
+        unless options.noPush
+          shell.exec "git --git-dir=#{ gitDir } --work-tree=#{ gitWorkTree } push #{ options.remote } #{ options.branch }", { silent: !options.verbose }, (code, output) ->
+            shell.echo(logMessage) if options.verbose
+            callback()
+        else
+          shell.echo(logMessage) if options.verbose
+          callback()
+  
