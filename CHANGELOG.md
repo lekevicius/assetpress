@@ -2,7 +2,12 @@
 
 ## 2.2.0
 
-* New command line flag --git-no-push and option gitNoPush. Will not push created git commit
+* Almost a complete rewrite of all modules. AssetPress is more modular, stable and extensible.
+* Reworked commandline options.
+* Workflows now support clean mode that erases previous directory. Default is not clean.
+* New command line flag --git-no-push and option gitNoPush. Will not push created git commit.
+* Fixes for Apple Watch config.
+* Size warnings: AssetPress warns if some assets are incorrect size or missing resolutions.
 
 ## 2.1.0
 
