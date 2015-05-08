@@ -6,7 +6,7 @@ path = require 'path'
 
 _ = require 'lodash'
 colors = require 'colors'
-argv = require('minimist')(process.argv.slice(2))
+argv = require('minimist')(process.argv.slice(2), { boolean : ['i','a','c','v','x'] })
 
 # Package info is used by version reporter.
 info = require '../package.json'
