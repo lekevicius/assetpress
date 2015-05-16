@@ -54,7 +54,7 @@ processImage = (task, callback) ->
   else
     image = im(info.devices[task.device]['' + highestScale])
     # Making sure ImageMagic doesn't add date chunk that creates a binary difference where there are none.
-    .out '-define', 'png:exclude-chunk=date'
+    .out '-define', 'png:exclude-chunk=tIME,tEXt,zTXt,date'
 
   image.size (err, size) ->
     process.stdout.write err + '\n' if err
@@ -143,7 +143,7 @@ processImage = (task, callback) ->
         image
         .out '-background', 'white'
         .out '-alpha', 'remove'
-        .out '-define', 'png:exclude-chunk=date'
+        .out '-define', 'png:exclude-chunk=tIME,tEXt,zTXt,date'
         .write destinationPath, (err) ->
           process.stdout.write err + '\n' if err
           process.stdout.write "Copied prerendered App Icon #{ info.id + scaleSuffix + deviceSuffix + info.extension } and removed alpha channel.\n" if options.verbose
@@ -158,7 +158,7 @@ processImage = (task, callback) ->
       image
       .filter iOSConstants.resizeFilter
       .resize Math.round(size.width * scaleRatio), Math.round(size.height * scaleRatio), '!'
-      .out '-define', 'png:exclude-chunk=date'
+      .out '-define', 'png:exclude-chunk=tIME,tEXt,zTXt,date'
       .write destinationPath, (err) ->
         process.stdout.write err + '\n' if err
         process.stdout.write "Scaled image #{ info.id + scaleSuffix + deviceSuffix + info.extension }\n" if options.verbose

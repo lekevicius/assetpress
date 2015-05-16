@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.1
+
+* Fixed PNG chunk exclusions, now removes 'tIME' chunk.
+
 ## 2.2.0
 
 * Almost a complete rewrite of all modules. AssetPress is more modular, stable and extensible.

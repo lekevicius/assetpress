@@ -58,7 +58,7 @@ remove9Patches = (filesToCrop, filenames, directory, contents, basename, callbac
     cropImage.size (err, size) ->
       cropImage
       .crop (size.width - 2 * imageScale), (size.height - 2 * imageScale), imageScale, imageScale
-      .out '-define', 'png:exclude-chunk=date'
+      .out '-define', 'png:exclude-chunk=tIME,tEXt,zTXt,date'
       .write imagePath, (err) ->
         process.stdout.write err + '\n' if err
         process.stdout.write "Cropped 9-patch image #{ imagePath }\n" if options.verbose

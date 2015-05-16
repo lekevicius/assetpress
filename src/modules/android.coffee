@@ -131,8 +131,10 @@ process9PatchImage = (file, callback) ->
   createPatchContent file, ->
     createPatch file, 'left', -> createPatch file, 'right', ->
       createPatch file, 'top', -> createPatch file, 'bottom', ->
+		  
         # Creating empty, transparent image size of resized patch content + 1 pixel on each side.
-        _composite = im(file.patchContentWidth + 2, file.patchContentHeight + 2, '#ffffff00').out('-define', 'png:exclude-chunk=date')
+        _composite = im(file.patchContentWidth + 2, file.patchContentHeight + 2, '#ffffff00').out('-define', 'png:exclude-chunk=tIME,tEXt,zTXt,date')
+		
         # Drawing content...
         _composite.draw [ "image Over 1,1 0,0 \'#{ file.contentPatchPath }\'" ]
         # And 4 patches.
@@ -156,7 +158,7 @@ processStandardImage = (file, callback) ->
 
   file.image
   # ImageMagic adds png date chunk that makes otherwise-identical PNGs different to VCSes.
-  .out '-define', 'png:exclude-chunk=date'
+  .out '-define', 'png:exclude-chunk=tIME,tEXt,zTXt,date'
   .filter androidConstants.resizeFilter
   .resize Math.round(file.width * file.scaleFactor), Math.round(file.height * file.scaleFactor), '!'
   .write fileDestination, (error) ->
