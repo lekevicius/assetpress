@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0 "Waterhouse"
+
+* Rewrite from CoffeeScript to TypeScript
+* AssetPress Init helps to choose the right settings and save it for later
+* Opting for Sketch multiple resolution export instead of resizing with ImageMagick
+
 ## 2.2.1
 
 * Fixed PNG chunk exclusions, now removes 'tIME' chunk.
